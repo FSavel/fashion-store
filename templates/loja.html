@@ -9,6 +9,68 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- CSS Estilo Menu Digital -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        /* Estilos do Modal de Tamanho e Cor */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .modal-header h3 { font-size: 18px; font-weight: bold; }
+        .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #777; }
+        .option-group { margin-bottom: 15px; }
+        .option-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 8px; color: #555; }
+        .options-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-option {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btn-option.selected {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .btn-confirm-add {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
 
@@ -52,7 +114,7 @@
                     {% for p in produtos %}
                         {% if p.categoria == cat_item.categoria %}
                             
-                            <!-- Cartão de Produto com Modal de Opções (Tamanho/Cor) -->
+                            <!-- Cartão de Produto -->
                             <div class="product-card" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
                                 <div class="product-img-wrapper">
                                     <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
@@ -78,18 +140,92 @@
     {% endfor %}
 </div>
 
+<!-- Modal para Escolha de Tamanhos e Cores -->
+<div class="modal-overlay" id="modal-variacoes">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-produto-nome">Nome do Produto</h3>
+            <button class="close-btn" onclick="fecharModal()">&times;</button>
+        </div>
+        
+        <div class="option-group" id="group-tamanhos">
+            <label>Escolha o Tamanho:</label>
+            <div class="options-btns" id="container-tamanhos"></div>
+        </div>
+
+        <div class="option-group" id="group-cores">
+            <label>Escolha a Cor:</label>
+            <div class="options-btns" id="container-cores"></div>
+        </div>
+
+        <button class="btn-confirm-add" onclick="confirmarAdicionarCarrinho()">Adicionar à Sacola</button>
+    </div>
+</div>
+
 <!-- Barra Flutuante do Carrinho -->
 <a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
     <span><i class="fa-solid fa-bag-shopping"></i> &nbsp;Ver Sacola</span>
     <span id="cart-counter" style="background: white; color: var(--primary); padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: bold;">0</span>
 </a>
 
-<!-- Scripts do Carrinho e Interatividade -->
 <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 
 <script>
+let produtoSelecionado = {};
+
+function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
+    produtoSelecionado = { id, nome, preco, tamanho: '', cor: '' };
+    document.getElementById('modal-produto-nome').innerText = nome;
+
+    // Processar Tamanhos
+    const containerTamanhos = document.getElementById('container-tamanhos');
+    containerTamanhos.innerHTML = '';
+    const tamanhos = tamanhosStr ? tamanhosStr.split(',') : ['Único'];
+    tamanhos.forEach((t, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-option' + (index === 0 ? ' selected' : '');
+        btn.innerText = t.trim();
+        if(index === 0) produtoSelecionado.tamanho = t.trim();
+        btn.onclick = () => {
+            document.querySelectorAll('#container-tamanhos .btn-option').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            produtoSelecionado.tamanho = t.trim();
+        };
+        containerTamanhos.appendChild(btn);
+    });
+
+    // Processar Cores
+    const containerCores = document.getElementById('container-cores');
+    containerCores.innerHTML = '';
+    const cores = coresStr ? coresStr.split(',') : ['Padrão'];
+    cores.forEach((c, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-option' + (index === 0 ? ' selected' : '');
+        btn.innerText = c.trim();
+        if(index === 0) produtoSelecionado.cor = c.trim();
+        btn.onclick = () => {
+            document.querySelectorAll('#container-cores .btn-option').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            produtoSelecionado.cor = c.trim();
+        };
+        containerCores.appendChild(btn);
+    });
+
+    document.getElementById('modal-variacoes').style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('modal-variacoes').style.display = 'none';
+}
+
+function confirmarAdicionarCarrinho() {
+    if (typeof addToCart === 'function') {
+        addToCart(produtoSelecionado.nome, produtoSelecionado.preco, produtoSelecionado.tamanho, produtoSelecionado.cor);
+    }
+    fecharModal();
+}
+
 document.addEventListener("DOMContentLoaded", function() {
-    // Destaca a categoria ativa na navegação horizontal ao clicar
     const badges = document.querySelectorAll('.category-badge');
     if(badges.length > 0) badges[0].classList.add('active');
 
