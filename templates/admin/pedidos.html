@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin | Pedidos</title>
+    <style>
+        body {
+            background-color: #111827;
+            color: #f9fafb;
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1 { color: #f59e0b; font-size: 1.5rem; }
+        .btn-logout {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1f2937;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #374151;
+        }
+        th { background: #374151; color: #f59e0b; }
+        .pedido-detalhe { white-space: pre-line; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{{ config.NOME_LOJA }} - Registo de Pedidos</h1>
+        <a href="/admin/logout" class="btn-logout">Sair</a>
+    </header>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Itens Solicitados</th>
+                <th>Total</th>
+                <th>Data / Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pedidos %}
+            <tr>
+                <td><strong>#{{ p.get('id', 'N/A') }}</strong></td>
+                <td>{{ p.get('nome', 'N/A') }}</td>
+                <td>{{ p.get('contacto', 'N/A') }}</td>
+                <td class="pedido-detalhe">{{ p.get('pedido', 'N/A') }}</td>
+                <td style="color: #f59e0b; font-weight: bold;">{{ p.get('total', '0 MT') }}</td>
+                <td>{{ p.get('hora', 'N/A') }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #9ca3af;">Nenhum pedido registado até ao momento.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
