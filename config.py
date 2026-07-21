@@ -3,7 +3,7 @@ import os
 class Config:
     # Informações da Loja
     NOME_LOJA = os.getenv("NOME_LOJA", "Boutique Elegance")
-    NUMERO_WHATSAPP = os.getenv("NUMERO_WHATSAPP", "258840000000")  # Coloca o número com indicativo sem +
+    NUMERO_WHATSAPP = os.getenv("NUMERO_WHATSAPP", "258879131089")  # Coloca o número com indicativo sem +
     
     # Credenciais Admin
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
