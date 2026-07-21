@@ -175,6 +175,14 @@ def admin_logout():
     return redirect(url_for("admin_login"))
 
 # ======================================================
+# SOBRE
+# ======================================================
+@app.route("/sobre")
+def sobre():
+    """Exibe a página de detalhes, localização e créditos da loja."""
+    return render_template("sobre.html")
+    
+# ======================================================
 # HEALTH CHECK
 # ======================================================
 @app.route("/health")
