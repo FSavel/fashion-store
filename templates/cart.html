@@ -12,6 +12,7 @@
         :root {
             --primary: #0f172a;
             --accent: #25d366; /* Verde WhatsApp */
+            --sms-btn: #3b82f6; /* Azul SMS */
             --bg-body: #f8fafc;
             --surface: #ffffff;
             --text-main: #0f172a;
@@ -150,6 +151,24 @@
             box-shadow: 0 8px 20px -4px rgba(37, 211, 102, 0.4);
         }
 
+        .btn-send-sms {
+            width: 100%;
+            background: var(--sms-btn);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.3);
+        }
+
         .empty-cart {
             text-align: center;
             padding: 40px 20px;
@@ -202,8 +221,14 @@
             </select>
         </div>
 
+        <!-- Botão WhatsApp -->
         <button class="btn-send-whatsapp" onclick="enviarPedidoWhatsApp()">
             <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Finalizar no WhatsApp
+        </button>
+
+        <!-- Botão SMS Alternativo -->
+        <button class="btn-send-sms" onclick="enviarPedidoSMS()">
+            <i class="fa-solid fa-comment-sms" style="font-size: 18px;"></i> Sem WhatsApp? Enviar por SMS
         </button>
     </div>
 </div>
@@ -211,7 +236,7 @@
 <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 
 <script>
-// Número do WhatsApp da Boutique (Substitui pelo teu número real com código de país)
+// Número do telefone da Boutique (Substitui pelo teu número real com código do país)
 const TELEFONE_BOUTIQUE = "258840000000"; 
 
 function renderizarCarrinho() {
@@ -260,31 +285,38 @@ function alterarQtd(index, delta) {
     if(cart[index].qtd <= 0) cart.splice(index, 1);
     localStorage.setItem('cart', JSON.stringify(cart));
     renderizarCarrinho();
+    if (typeof atualizarBarraSacola === 'function') atualizarBarraSacola();
 }
 
-function enviarPedidoWhatsApp() {
+function validarFormulario() {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const nome = document.getElementById('cliente-nome').value.trim();
     const endereco = document.getElementById('cliente-endereco').value.trim();
-    const pagamento = document.getElementById('cliente-pagamento').value;
 
     if(cart.length === 0) {
         alert("A sua sacola está vazia!");
-        return;
+        return null;
     }
     if(!nome || !endereco) {
         alert("Por favor, preencha o seu nome e endereço de entrega.");
-        return;
+        return null;
     }
 
+    return { cart, nome, endereco, pagamento: document.getElementById('cliente-pagamento').value };
+}
+
+function enviarPedidoWhatsApp() {
+    const dados = validarFormulario();
+    if (!dados) return;
+
     let mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n`;
-    mensagem += `*Cliente:* ${nome}\n`;
-    mensagem += `*Endereço:* ${endereco}\n`;
-    mensagem += `*Pagamento:* ${pagamento}\n\n`;
+    mensagem += `*Cliente:* ${dados.nome}\n`;
+    mensagem += `*Endereço:* ${dados.endereco}\n`;
+    mensagem += `*Pagamento:* ${dados.pagamento}\n\n`;
     mensagem += `*ITENS DO PEDIDO:*\n`;
 
     let total = 0;
-    cart.forEach((item, i) => {
+    dados.cart.forEach((item, i) => {
         const sub = parseFloat(item.preco) * item.qtd;
         total += sub;
         mensagem += `${i+1}. ${item.nome}\n   • Tam: ${item.tamanho} | Cor: ${item.cor}\n   • Qtd: ${item.qtd} x ${item.preco} MT = *${sub} MT*\n\n`;
@@ -295,9 +327,37 @@ function enviarPedidoWhatsApp() {
 
     const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
     
-    // Limpa carrinho e redireciona
+    // Limpa o carrinho e redireciona
     localStorage.removeItem('cart');
     window.open(url, '_blank');
+}
+
+function enviarPedidoSMS() {
+    const dados = validarFormulario();
+    if (!dados) return;
+
+    let mensagem = `NOVO PEDIDO (SMS) - BOUTIQUE ELEGANCE\n\n`;
+    mensagem += `Cliente: ${dados.nome}\n`;
+    mensagem += `Endereco: ${dados.endereco}\n`;
+    mensagem += `Pagamento: ${dados.pagamento}\n\n`;
+    mensagem += `ITENS:\n`;
+
+    let total = 0;
+    dados.cart.forEach((item, i) => {
+        const sub = parseFloat(item.preco) * item.qtd;
+        total += sub;
+        mensagem += `${i+1}. ${item.nome} (${item.tamanho}/${item.cor}) - ${item.qtd}x ${item.preco}MT = ${sub}MT\n`;
+    });
+
+    mensagem += `\nTOTAL: ${total.toFixed(2)} MT`;
+
+    // Trata diferenças de sintaxe no protocolo SMS entre iOS e Android
+    const separador = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
+    const urlSMS = `sms:${TELEFONE_BOUTIQUE}${separador}body=${encodeURIComponent(mensagem)}`;
+
+    // Limpa o carrinho e abre o app de SMS
+    localStorage.removeItem('cart');
+    window.location.href = urlSMS;
 }
 
 document.addEventListener("DOMContentLoaded", renderizarCarrinho);
