@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boutique Elegance | Catálogo Oficial</title>
     
-    <!-- Ícones e Fontes de Alta Performance -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #0f172a;       /* Dark slate refinado */
-            --accent: #e11d48;        /* Vermelho/Rosa de destaque inspirada em grandes e-commerces */
+            --primary: #0f172a;
+            --accent: #e11d48;
             --bg-body: #f8fafc;
             --surface: #ffffff;
             --text-main: #0f172a;
@@ -34,7 +33,6 @@
             padding-bottom: 120px;
         }
 
-        /* HEADER FIXO & COMPACTO (Estilo App Móvel) */
         header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -66,21 +64,6 @@
             font-weight: 500;
         }
 
-        .btn-cart-icon {
-            background: #f1f5f9;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--primary);
-            text-decoration: none;
-            position: relative;
-            font-size: 18px;
-        }
-
-        /* BARRA DE PESQUISA ESTILO ALIBABA */
         .search-container {
             position: relative;
             margin-bottom: 8px;
@@ -112,7 +95,6 @@
             font-size: 14px;
         }
 
-        /* CARROSSEL DE CATEGORIAS EM BOTAO PILULA */
         .categories-nav {
             display: flex;
             gap: 8px;
@@ -140,7 +122,6 @@
             color: white;
         }
 
-        /* BANNER PROMOCIONAL IMPACTANTE */
         .promo-banner {
             margin: 16px;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -165,7 +146,6 @@
             margin-bottom: 6px;
         }
 
-        /* LAYOUT E CARDS DOS PRODUTOS (EXCLUSIVOS PARA MODA) */
         .main-container {
             max-width: 1000px;
             margin: 0 auto;
@@ -213,7 +193,7 @@
         .img-container {
             position: relative;
             width: 100%;
-            padding-top: 125%; /* Proporção ideal de foto de roupa (4:5) */
+            padding-top: 125%;
             background: #e2e8f0;
             overflow: hidden;
         }
@@ -230,7 +210,6 @@
             transform: scale(1.06);
         }
 
-        /* GATILHOS VISUAIS NOS PRODUTOS */
         .product-badge {
             position: absolute;
             top: 8px;
@@ -295,9 +274,9 @@
             align-items: center;
             font-size: 13px;
             border: none;
+            pointer-events: none; /* Clique passa para o card */
         }
 
-        /* MODAL ESTILO BOTTOM SHEET (SHEIN / ALIEXPRESS) */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -384,26 +363,31 @@
             box-shadow: 0 8px 20px -4px rgba(225, 29, 72, 0.4);
         }
 
-        /* BARRA DE COMPRA FLUTUANTE */
+        /* BARRA FLUTUANTE DA SACOLA (VERDE CHAMATIVO) */
         .cart-floating-btn {
             position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--primary);
+            background: #25d366; /* Verde Chamativo estilo WhatsApp */
             color: white;
             padding: 16px 24px;
             border-radius: 30px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 800;
             text-decoration: none;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.45);
             display: none;
             align-items: center;
             justify-content: space-between;
             z-index: 99;
             width: calc(100% - 32px);
             max-width: 440px;
+            transition: transform 0.2s ease;
+        }
+
+        .cart-floating-btn:active {
+            transform: translateX(-50%) scale(0.97);
         }
     </style>
 </head>
@@ -415,18 +399,14 @@
             <h1 class="brand-title">Boutique Elegance</h1>
             <p class="brand-subtitle">Coleção Exclusiva 2026</p>
         </div>
-        <a href="/cart" class="btn-cart-icon" title="Ver Sacola">
-            <i class="fa-solid fa-bag-shopping"></i>
-        </a>
+        <!-- Sacola do topo removida para evitar duplicidade -->
     </div>
 
-    <!-- Pesquisa em Tempo Real -->
     <div class="search-container">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
-    <!-- Categorias -->
     <div class="categories-nav">
         {% set categories_seen = [] %}
         {% for p in produtos %}
@@ -438,7 +418,6 @@
     </div>
 </header>
 
-<!-- Banner Promocional -->
 <div class="promo-banner">
     <div>
         <span class="promo-tag">Tendência</span>
@@ -461,9 +440,7 @@
                     {% for p in produtos %}
                         {% if p.categoria == cat_item.categoria %}
                             
-                            <div class="product-card" 
-                             data-nome="{{ p.nome | lower }}" 
-                             onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos or '' }}', '{{ p.cores or '' }}')">
+                            <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos or '' }}', '{{ p.cores or '' }}')">
                                 <div class="img-container">
                                     <span class="product-badge">Novo</span>
                                     <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
@@ -473,10 +450,7 @@
                                     <p class="product-description">{{ p.descricao if p.descricao else '' }}</p>
                                     <div class="product-bottom">
                                         <span class="product-price">{{ p.preco }} MT</span>
-                                        <!-- Adicionado pointer-events: none para o clique passar direto para o card -->
-                                        <button class="add-btn" style="pointer-events: none;">
-                                        <i class="fa-solid fa-plus"></i>
-                                    </button>
+                                        <button class="add-btn"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -512,10 +486,10 @@
     </div>
 </div>
 
-<!-- Barra Flutuante da Sacola -->
+<!-- Barra Flutuante da Sacola (Chama a atenção) -->
 <a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
-    <span><i class="fa-solid fa-bag-shopping"></i> &nbsp;Ver Sacola</span>
-    <span id="cart-counter" style="background: white; color: var(--primary); padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 800;">0</span>
+    <span><i class="fa-solid fa-bag-shopping" style="font-size: 18px;"></i> &nbsp;Ver Sacola de Compras</span>
+    <span id="cart-counter" style="background: white; color: #15803d; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: 800;">0</span>
 </a>
 
 <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
