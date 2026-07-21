@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boutique Elegance | Sacola de Compras</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #25d366; /* Verde WhatsApp */
+            --bg-body: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            padding-bottom: 40px;
+        }
+
+        header {
+            background: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .btn-back {
+            background: #f1f5f9;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        header h1 { font-size: 18px; font-weight: 800; }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        .cart-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .cart-item:last-child { border-bottom: none; }
+
+        .item-info h4 { font-size: 14px; font-weight: 700; }
+        .item-info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .item-price { font-size: 14px; font-weight: 800; color: var(--primary); margin-top: 4px; }
+
+        .item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-qty {
+            background: #f1f5f9;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Formulário de Entrega */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            outline: none;
+            background: #f8fafc;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .btn-send-whatsapp {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            box-shadow: 0 8px 20px -4px rgba(37, 211, 102, 0.4);
+        }
+
+        .empty-cart {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+    <h1>Minha Sacola</h1>
+</header>
+
+<div class="container">
+    <!-- Lista de Itens -->
+    <div class="cart-card">
+        <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 12px;">Itens Selecionados</h3>
+        <div id="cart-items-container">
+            <!-- Renderizado via JavaScript -->
+        </div>
+
+        <div class="summary-row">
+            <span>Total a Pagar:</span>
+            <span id="cart-total-price">0 MT</span>
+        </div>
+    </div>
+
+    <!-- Dados para Entrega -->
+    <div class="cart-card">
+        <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 14px;">Dados para Entrega</h3>
+        
+        <div class="form-group">
+            <label>Seu Nome Completo</label>
+            <input type="text" id="cliente-nome" placeholder="Ex: Maria Silva" required>
+        </div>
+
+        <div class="form-group">
+            <label>Endereço / Bairro de Entrega</label>
+            <input type="text" id="cliente-endereco" placeholder="Ex: Bairro Polana, Av. Julius Nyerere" required>
+        </div>
+
+        <div class="form-group">
+            <label>Método de Pagamento</label>
+            <select id="cliente-pagamento">
+                <option value="M-Pesa">M-Pesa</option>
+                <option value="e-Mola">e-Mola</option>
+                <option value="Numerário / Na Entrega">Numerário na Entrega</option>
+                <option value="POS / Cartão">POS / Cartão na Entrega</option>
+            </select>
+        </div>
+
+        <button class="btn-send-whatsapp" onclick="enviarPedidoWhatsApp()">
+            <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Finalizar no WhatsApp
+        </button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+
+<script>
+// Número do WhatsApp da Boutique (Substitui pelo teu número real com código de país)
+const TELEFONE_BOUTIQUE = "258840000000"; 
+
+function renderizarCarrinho() {
+    const container = document.getElementById('cart-items-container');
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    if(cart.length === 0) {
+        container.innerHTML = `
+            <div class="empty-cart">
+                <i class="fa-solid fa-bag-shopping" style="font-size: 40px; margin-bottom: 10px; opacity: 0.3;"></i>
+                <p>Sua sacola está vazia.</p>
+            </div>`;
+        document.getElementById('cart-total-price').innerText = '0 MT';
+        return;
+    }
+
+    let html = '';
+    let total = 0;
+
+    cart.forEach((item, index) => {
+        const itemTotal = parseFloat(item.preco) * item.qtd;
+        total += itemTotal;
+        html += `
+            <div class="cart-item">
+                <div class="item-info">
+                    <h4>${item.nome}</h4>
+                    <p>Tam: <b>${item.tamanho}</b> | Cor: <b>${item.cor}</b></p>
+                    <div class="item-price">${item.preco} MT</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn-qty" onclick="alterarQtd(${index}, -1)">-</button>
+                    <span style="font-size: 13px; font-weight: 700;">${item.qtd}</span>
+                    <button class="btn-qty" onclick="alterarQtd(${index}, 1)">+</button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+    document.getElementById('cart-total-price').innerText = `${total.toFixed(2)} MT`;
+}
+
+function alterarQtd(index, delta) {
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    cart[index].qtd += delta;
+    if(cart[index].qtd <= 0) cart.splice(index, 1);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderizarCarrinho();
+}
+
+function enviarPedidoWhatsApp() {
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const nome = document.getElementById('cliente-nome').value.trim();
+    const endereco = document.getElementById('cliente-endereco').value.trim();
+    const pagamento = document.getElementById('cliente-pagamento').value;
+
+    if(cart.length === 0) {
+        alert("A sua sacola está vazia!");
+        return;
+    }
+    if(!nome || !endereco) {
+        alert("Por favor, preencha o seu nome e endereço de entrega.");
+        return;
+    }
+
+    let mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n`;
+    mensagem += `*Cliente:* ${nome}\n`;
+    mensagem += `*Endereço:* ${endereco}\n`;
+    mensagem += `*Pagamento:* ${pagamento}\n\n`;
+    mensagem += `*ITENS DO PEDIDO:*\n`;
+
+    let total = 0;
+    cart.forEach((item, i) => {
+        const sub = parseFloat(item.preco) * item.qtd;
+        total += sub;
+        mensagem += `${i+1}. ${item.nome}\n   • Tam: ${item.tamanho} | Cor: ${item.cor}\n   • Qtd: ${item.qtd} x ${item.preco} MT = *${sub} MT*\n\n`;
+    });
+
+    mensagem += `*TOTAL DO PEDIDO:* ${total.toFixed(2)} MT\n\n`;
+    mensagem += `_Aguardando confirmação de disponibilidade._`;
+
+    const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
+    
+    // Limpa carrinho e redireciona
+    localStorage.removeItem('cart');
+    window.open(url, '_blank');
+}
+
+document.addEventListener("DOMContentLoaded", renderizarCarrinho);
+</script>
+
+</body>
+</html>
