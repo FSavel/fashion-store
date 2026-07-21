@@ -43,24 +43,25 @@
     </div>
 
     <!-- Grelha de Produtos Responsiva -->
+    <!-- Grelha de Produtos Responsiva -->
     <main class="products-grid">
         {% for p in produtos %}
-        <div class="product-card" data-categoria="{{ p.categoria }}">
-            <img src="{{ p.fotos.split(',')[0] if p.fotos else '/static/images/placeholder.jpg' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
+        <div class="product-card" data-categoria="{{ p.categoria }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
+            <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
             <div class="product-info">
-                <div>
-                    <div class="product-title">{{ p.nome }}</div>
-                    <div class="product-price">{{ p.preco }} MT</div>
+                <div class="product-title">{{ p.nome }}</div>
+                <div class="product-footer">
+                    <span class="product-price">{{ p.preco }} MT</span>
+                    <button class="btn-add">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
                 </div>
-                <button class="btn-add" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
-                    <i class="fa-solid fa-cart-plus"></i> Escolher
-                </button>
             </div>
         </div>
         {% else %}
-        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);">
             <i class="fa-solid fa-box-open" style="font-size: 3rem; margin-bottom: 10px;"></i>
-            <p>Nenhum produto disponível no catálogo neste momento.</p>
+            <p>Nenhum produto disponível no momento.</p>
         </div>
         {% endfor %}
     </main>
