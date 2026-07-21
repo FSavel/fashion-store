@@ -2,125 +2,105 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>{{ config.NOME_LOJA }} | Catálogo Digital</title>
-
-    <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="{{ config.COR_SECUNDARIA }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-    <!-- Fontes e Ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boutique Elegance | Catálogo</title>
     
-    <!-- CSS Próprio -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- FontAwesome (Ícones) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Estilo Menu Digital -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body data-whatsapp="{{ config.NUMERO_WHATSAPP }}">
+<body>
 
-    <!-- Banner Indicador de Estado Offline -->
-    <div id="offline-banner" class="status-offline">
-        <i class="fa-solid fa-wifi"></i> Modo Offline - A navegar no catálogo guardado
+<!-- Header Estilo Menu Digital -->
+<header>
+    <div class="header-top">
+        <div class="brand">
+            <h1 id="admin-trigger">Boutique Elegance</h1>
+            <p>Sua loja de moda online</p>
+        </div>
+        <div class="actions-btn">
+            <a href="/cart" class="btn-info" title="Carrinho">
+                <i class="fa-solid fa-bag-shopping"></i>
+            </a>
+        </div>
     </div>
 
-    <!-- Cabeçalho Principal -->
-    <header>
-        <div class="brand">
-            <h1>{{ config.NOME_LOJA }}</h1>
-        </div>
-        <button id="btn-install" class="btn-cat" style="display:none;">
-            <i class="fa-solid fa-download"></i> Instalar App
-        </button>
-    </header>
-
-    <!-- Carrossel Horizontal de Categorias -->
-    <div class="categories-container">
-        <button class="btn-cat active" onclick="filtrar('todas')">Todas</button>
-        {% for cat in categorias %}
-        <button class="btn-cat" onclick="filtrar('{{ cat }}')">{{ cat }}</button>
+    <!-- Navegação de Categorias com Carrossel Horizontal -->
+    <div class="categories-nav">
+        {% set categories_seen = [] %}
+        {% for p in produtos %}
+            {% if p.categoria and p.categoria not in categories_seen %}
+                {% set _ = categories_seen.append(p.categoria) %}
+                <a href="#cat-{{ loop.index }}" class="category-badge">{{ p.categoria }}</a>
+            {% endif %}
         {% endfor %}
     </div>
+</header>
 
-    <!-- Grelha de Produtos Responsiva -->
-    <!-- Grelha de Produtos Responsiva -->
-    <main class="products-grid">
-        {% for p in produtos %}
-        <div class="product-card" data-categoria="{{ p.categoria }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
-            <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
-            <div class="product-info">
-                <div class="product-title">{{ p.nome }}</div>
-                <div class="product-footer">
-                    <span class="product-price">{{ p.preco }} MT</span>
-                    <button class="btn-add">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
+<div class="container">
+    {% set categories_seen_body = [] %}
+    {% for cat_item in produtos %}
+        {% if cat_item.categoria and cat_item.categoria not in categories_seen_body %}
+            {% set _ = categories_seen_body.append(cat_item.categoria) %}
+            
+            <!-- Seção de Categoria -->
+            <div class="category-section" id="cat-{{ loop.index }}">
+                <h3 class="category-title">{{ cat_item.categoria }}</h3>
+                
+                <div class="products-grid">
+                    {% for p in produtos %}
+                        {% if p.categoria == cat_item.categoria %}
+                            
+                            <!-- Cartão de Produto com Modal de Opções (Tamanho/Cor) -->
+                            <div class="product-card" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
+                                <div class="product-img-wrapper">
+                                    <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
+                                </div>
+                                <div class="product-info">
+                                    <h4 class="product-name">{{ p.nome }}</h4>
+                                    <p class="product-desc">{{ p.descricao if p.descricao else '' }}</p>
+                                    <div class="product-footer">
+                                        <span class="product-price">{{ p.preco }} MT</span>
+                                        <span class="btn-add-cart">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </div>
-        </div>
-        {% else %}
-        <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--muted);">
-            <i class="fa-solid fa-box-open" style="font-size: 3rem; margin-bottom: 10px;"></i>
-            <p>Nenhum produto disponível no momento.</p>
-        </div>
-        {% endfor %}
-    </main>
+            
+        {% endif %}
+    {% endfor %}
+</div>
 
-    <!-- Barra Flutuante do Carrinho de Compras -->
-    <div class="cart-float" id="cart-bar" onclick="abrirCarrinho()">
-        <span><i class="fa-solid fa-bag-shopping"></i> <span id="cart-count">0</span> itens</span>
-        <span id="cart-total">0.00 MT</span>
-    </div>
+<!-- Barra Flutuante do Carrinho -->
+<a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
+    <span><i class="fa-solid fa-bag-shopping"></i> &nbsp;Ver Sacola</span>
+    <span id="cart-counter" style="background: white; color: var(--primary); padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: bold;">0</span>
+</a>
 
-    <!-- JavaScript Principal da App -->
-    <script src="/static/js/app.js"></script>
+<!-- Scripts do Carrinho e Interatividade -->
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 
-    <!-- Script de Inicialização da PWA (Offline & Instalação) -->
-    <script>
-        // Registo do Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker Registado com Sucesso!'))
-                    .catch(err => console.log('Erro ao registar Service Worker:', err));
-            });
-        }
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Destaca a categoria ativa na navegação horizontal ao clicar
+    const badges = document.querySelectorAll('.category-badge');
+    if(badges.length > 0) badges[0].classList.add('active');
 
-        // Monitor de Estado Online / Offline
-        window.addEventListener('online', atualizarEstadoRede);
-        window.addEventListener('offline', atualizarEstadoRede);
-
-        function atualizarEstadoRede() {
-            const banner = document.getElementById('offline-banner');
-            if (banner) {
-                banner.style.display = navigator.onLine ? 'none' : 'block';
-            }
-        }
-        atualizarEstadoRede();
-
-        // Banner de Instalação no Telemóvel
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const btnInstall = document.getElementById('btn-install');
-            if (btnInstall) btnInstall.style.display = 'block';
+    badges.forEach(badge => {
+        badge.addEventListener('click', function() {
+            badges.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
         });
+    });
+});
+</script>
 
-        const btnInstall = document.getElementById('btn-install');
-        if (btnInstall) {
-            btnInstall.addEventListener('click', () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choice) => {
-                        if (choice.outcome === 'accepted') {
-                            btnInstall.style.display = 'none';
-                        }
-                        deferredPrompt = null;
-                    });
-                }
-            });
-        }
-    </script>
 </body>
 </html>
