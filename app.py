@@ -5,7 +5,6 @@ import time
 
 from config import Config
 from utils.helpers import hora_mocambique
-# Certifica-te de que o catalog_service tem as funções de adicionar e eliminar (add_product, delete_product)
 from services.catalog_service import load_catalog, add_order, get_orders, add_product, delete_product
 
 app = Flask(__name__)
@@ -82,15 +81,17 @@ def api_produtos():
 # CHECKOUT / REGISTAR PEDIDO
 # ======================================================
 @app.route("/checkout", methods=["POST"])
+@app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
+    """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
     data = request.get_json(silent=True)
 
-    if not data or not data.get("cart"):
+    if not data or (not data.get("cart") and not data.get("itens")):
         return jsonify({"success": False, "error": "Carrinho vazio"}), 400
 
-    cart = data.get("cart", [])
-    nome_cliente = data.get("nome", "Cliente")
-    contacto = data.get("contacto", "N/A")
+    cart = data.get("cart") or data.get("itens", [])
+    nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
+    contacto = data.get("contacto") or data.get("cliente_endereco", "N/A")
 
     sucesso = add_order(
         Config.SHEET_ORDERS,
@@ -123,14 +124,14 @@ def admin_login():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    """Exibe o painel de gestão com a lista de produtos (usando admin.html)."""
+    """Exibe o painel de gestão com a lista de produtos."""
     produtos = load_catalog()
     return render_template("admin.html", produtos=produtos, config=Config)
 
 @app.route("/admin/add", methods=["POST"])
 @admin_required
 def admin_add_product():
-    """Recebe o formulário de cadastro do produto no admin.html."""
+    """Recebe o formulário de cadastro do produto."""
     novo_produto = {
         "nome": request.form.get("nome"),
         "categoria": request.form.get("categoria"),
@@ -164,6 +165,7 @@ def admin_delete_product(produto_id):
 @app.route("/admin/pedidos")
 @admin_required
 def admin_pedidos():
+    """Exibe a lista e o estado dos pedidos efetuados."""
     pedidos = get_orders(Config.SHEET_ORDERS)
     return render_template("admin/pedidos.html", pedidos=pedidos, config=Config)
 
