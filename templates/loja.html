@@ -471,7 +471,10 @@
                                     <p class="product-description">{{ p.descricao if p.descricao else '' }}</p>
                                     <div class="product-bottom">
                                         <span class="product-price">{{ p.preco }} MT</span>
-                                        <button class="add-btn"><i class="fa-solid fa-plus"></i></button>
+                                        <!-- Adicionado pointer-events: none para o clique passar direto para o card -->
+                                        <button class="add-btn" style="pointer-events: none;">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
                                     </div>
                                 </div>
                             </div>
