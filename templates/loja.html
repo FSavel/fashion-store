@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boutique Elegance | Catálogo Oficial</title>
     
+    <!-- Ícones e Fontes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #0f172a;
-            --accent: #e11d48;
+            --primary: #0f172a;       /* Dark slate refinado */
+            --accent: #e11d48;        /* Destaque rosa/vermelho */
             --bg-body: #f8fafc;
             --surface: #ffffff;
             --text-main: #0f172a;
@@ -33,6 +34,7 @@
             padding-bottom: 120px;
         }
 
+        /* HEADER FIXO & COMPACTO */
         header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -50,6 +52,11 @@
             margin-bottom: 10px;
         }
 
+        .brand-container {
+            cursor: pointer;
+            user-select: none;
+        }
+
         .brand-title {
             font-size: 20px;
             font-weight: 800;
@@ -64,6 +71,7 @@
             font-weight: 500;
         }
 
+        /* BARRA DE PESQUISA */
         .search-container {
             position: relative;
             margin-bottom: 8px;
@@ -95,6 +103,7 @@
             font-size: 14px;
         }
 
+        /* CARROSSEL DE CATEGORIAS */
         .categories-nav {
             display: flex;
             gap: 8px;
@@ -122,6 +131,7 @@
             color: white;
         }
 
+        /* BANNER PROMOCIONAL */
         .promo-banner {
             margin: 16px;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -146,6 +156,7 @@
             margin-bottom: 6px;
         }
 
+        /* GRID E CARDS DOS PRODUTOS */
         .main-container {
             max-width: 1000px;
             margin: 0 auto;
@@ -193,7 +204,7 @@
         .img-container {
             position: relative;
             width: 100%;
-            padding-top: 125%;
+            padding-top: 125%; /* Proporção 4:5 */
             background: #e2e8f0;
             overflow: hidden;
         }
@@ -277,6 +288,7 @@
             pointer-events: none; /* Clique passa para o card */
         }
 
+        /* MODAL BOTTOM SHEET */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -369,7 +381,7 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: #25d366; /* Verde Chamativo estilo WhatsApp */
+            background: #25d366; /* Verde estilo WhatsApp */
             color: white;
             padding: 16px 24px;
             border-radius: 30px;
@@ -395,18 +407,20 @@
 
 <header>
     <div class="header-top">
-        <div>
+        <!-- 5 Cliques no título ativam o modo Admin -->
+        <div class="brand-container" onclick="ativarModoAdmin()">
             <h1 class="brand-title">Boutique Elegance</h1>
             <p class="brand-subtitle">Coleção Exclusiva 2026</p>
         </div>
-        <!-- Sacola do topo removida para evitar duplicidade -->
     </div>
 
+    <!-- Pesquisa -->
     <div class="search-container">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
+    <!-- Categorias -->
     <div class="categories-nav">
         {% set categories_seen = [] %}
         {% for p in produtos %}
@@ -418,6 +432,7 @@
     </div>
 </header>
 
+<!-- Banner Promocional -->
 <div class="promo-banner">
     <div>
         <span class="promo-tag">Tendência</span>
@@ -464,7 +479,7 @@
     {% endfor %}
 </div>
 
-<!-- Modal para Seleção de Tamanhos e Cores -->
+<!-- Modal Seleção de Tamanhos e Cores -->
 <div class="modal-overlay" id="modal-variacoes">
     <div class="modal-content">
         <div class="modal-header">
@@ -486,7 +501,7 @@
     </div>
 </div>
 
-<!-- Barra Flutuante da Sacola (Chama a atenção) -->
+<!-- Barra Flutuante da Sacola (Chamativa) -->
 <a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
     <span><i class="fa-solid fa-bag-shopping" style="font-size: 18px;"></i> &nbsp;Ver Sacola de Compras</span>
     <span id="cart-counter" style="background: white; color: #15803d; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: 800;">0</span>
@@ -497,6 +512,26 @@
 <script>
 let produtoSelecionado = {};
 
+// --- LÓGICA DE 5 CLIQUES PARA O ADMIN ---
+let cliquesAdmin = 0;
+let tempoCliqueAdmin = null;
+
+function ativarModoAdmin() {
+    cliquesAdmin++;
+    clearTimeout(tempoCliqueAdmin);
+    
+    // Reseta se demorar mais de 3s entre cliques
+    tempoCliqueAdmin = setTimeout(() => {
+        cliquesAdmin = 0;
+    }, 3000);
+
+    if (cliquesAdmin >= 5) {
+        cliquesAdmin = 0;
+        window.location.href = "/admin/login";
+    }
+}
+
+// --- LÓGICA DO MODAL DE VARIAÇÕES ---
 function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     produtoSelecionado = { id, nome, preco, tamanho: '', cor: '' };
     document.getElementById('modal-produto-nome').innerText = nome;
