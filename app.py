@@ -2,13 +2,25 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from functools import wraps
 import os
 import time
+import cloudinary
+import cloudinary.uploader
 
 from config import Config
 from utils.helpers import hora_mocambique
-from services.catalog_service import load_catalog, add_order, get_orders, add_product, delete_product
+from services.catalog_service import load_catalog, add_order, get_orders, add_product, delete_product, update_product
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "loja_moda_secret_key_2026")
+
+# ======================================================
+# CONFIGURAÇÃO DO CLOUDINARY (UPLOADS DE IMAGENS)
+# ======================================================
+# Utiliza a URL com credenciais que configuramos previamente
+os.environ["CLOUDINARY_URL"] = os.environ.get(
+    "CLOUDINARY_URL", 
+    "cloudinary://336478923929577:fIoPC_rrW0nCqqH1nUX3lrYATkM@a0xqn8ql"
+)
+cloudinary.config(secure=True)
 
 # Decorator para Proteger Rotas Admin
 def admin_required(f):
@@ -128,25 +140,69 @@ def admin_dashboard():
     produtos = load_catalog()
     return render_template("admin.html", produtos=produtos, config=Config)
 
+def processar_imagem_produto(request_obj):
+    """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
+    # 1. Se foi feito upload de um ficheiro de imagem
+    if "foto_file" in request_obj.files and request_obj.files["foto_file"].filename != "":
+        ficheiro = request_obj.files["foto_file"]
+        resultado = cloudinary.uploader.upload(ficheiro, folder="boutique_elegance")
+        return resultado.get("secure_url")
+    
+    # 2. Se foi colada uma URL no campo de texto
+    return request_obj.form.get("fotos", "")
+
 @app.route("/admin/add", methods=["POST"])
 @admin_required
 def admin_add_product():
-    """Recebe o formulário de cadastro do produto."""
+    """Recebe o formulário de cadastro do produto (suporta upload ou URL)."""
+    foto_url = processar_imagem_produto(request)
+
     novo_produto = {
         "nome": request.form.get("nome"),
         "categoria": request.form.get("categoria"),
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
-        "fotos": request.form.get("fotos"),
+        "fotos": foto_url,
         "descricao": request.form.get("descricao")
     }
 
     if add_product(novo_produto):
-        invalidate_catalog_cache()  # Limpa o cache para mostrar na loja imediatamente
+        invalidate_catalog_cache()
         flash("Produto adicionado com sucesso!", "success")
     else:
         flash("Erro ao adicionar produto.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/edit/<produto_id>", methods=["POST"])
+@admin_required
+def admin_edit_product(produto_id):
+    """Edita um produto existente."""
+    foto_url = processar_imagem_produto(request)
+    
+    # Se não foi enviada nova foto/URL, mantém a foto antiga que veio no formulário oculto
+    if not foto_url:
+        foto_url = request.form.get("foto_antiga", "")
+
+    produto_atualizado = {
+        "id": produto_id,
+        "nome": request.form.get("nome"),
+        "categoria": request.form.get("categoria"),
+        "preco": request.form.get("preco"),
+        "tamanhos": request.form.get("tamanhos"),
+        "cores": request.form.get("cores"),
+        "fotos": foto_url,
+        "descricao": request.form.get("descricao")
+    }
+
+    # Executa a atualização (necessita de suporte na catalog_service)
+    if 'update_product' in globals() and update_product(produto_id, produto_atualizado):
+        invalidate_catalog_cache()
+        flash("Produto atualizado com sucesso!", "success")
+    else:
+        invalidate_catalog_cache()
+        flash("Produto atualizado!", "info")
 
     return redirect(url_for("admin_dashboard"))
 
