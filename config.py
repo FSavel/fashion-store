@@ -7,7 +7,7 @@ class Config:
     
     # Credenciais Admin
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "moda2026")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")
 
     # Identificadores das Abas do Google Sheets
     SHEET_PRODUCTS = "Produtos"
