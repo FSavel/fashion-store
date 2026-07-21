@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boutique Elegance | Coleção Exclusiva</title>
+    <title>Boutique Elegance | Catálogo Oficial</title>
     
-    <!-- FontAwesome (Ícones) -->
+    <!-- Ícones e Fontes de Alta Performance -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts para Tipografia Elegante -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #111111; /* Preto sofisticado */
-            --accent: #d4af37;  /* Dourado elegante */
-            --bg-light: #f8f9fa;
-            --card-white: #ffffff;
-            --text-muted: #6c757d;
+            --primary: #0f172a;       /* Dark slate refinado */
+            --accent: #e11d48;        /* Vermelho/Rosa de destaque inspirada em grandes e-commerces */
+            --bg-body: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
         }
 
         * {
@@ -27,201 +28,193 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--primary);
-            padding-bottom: 110px;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding-bottom: 120px;
         }
 
-        /* Header Elegante */
+        /* HEADER FIXO & COMPACTO (Estilo App Móvel) */
         header {
-            background: white;
-            padding: 18px 20px 10px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 16px;
         }
 
         .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
-        .brand h1 {
-            font-size: 22px;
+        .brand-title {
+            font-size: 20px;
             font-weight: 800;
             letter-spacing: -0.5px;
+            color: var(--primary);
             text-transform: uppercase;
         }
 
-        .brand p {
+        .brand-subtitle {
             font-size: 11px;
             color: var(--text-muted);
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            font-weight: 500;
         }
 
-        .btn-bag {
-            background: #f1f2f6;
-            border: none;
-            width: 42px;
-            height: 42px;
+        .btn-cart-icon {
+            background: #f1f5f9;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            color: var(--primary);
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
+            color: var(--primary);
             text-decoration: none;
-            font-size: 16px;
             position: relative;
+            font-size: 18px;
         }
 
-        /* Campo de Busca Rápida */
-        .search-box {
+        /* BARRA DE PESQUISA ESTILO ALIBABA */
+        .search-container {
             position: relative;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
-        .search-box input {
+        .search-container input {
             width: 100%;
-            padding: 10px 16px 10px 38px;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
-            background: #f8f9fa;
+            padding: 12px 16px 12px 42px;
+            border-radius: 25px;
+            border: 1px solid var(--border-color);
+            background: #f1f5f9;
             font-size: 13px;
             outline: none;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
         }
 
-        .search-box input:focus {
+        .search-container input:focus {
             background: white;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.05);
         }
 
-        .search-box i {
+        .search-container i {
             position: absolute;
-            left: 14px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
-            font-size: 13px;
+            font-size: 14px;
         }
 
-        /* Navegação por Categorias em Badges Pílula */
+        /* CARROSSEL DE CATEGORIAS EM BOTAO PILULA */
         .categories-nav {
             display: flex;
             gap: 8px;
             overflow-x: auto;
             white-space: nowrap;
-            padding: 4px 0 8px 0;
+            padding: 6px 0 2px 0;
             scrollbar-width: none;
         }
 
         .categories-nav::-webkit-scrollbar { display: none; }
 
         .category-badge {
-            background: #f1f2f6;
-            color: #495057;
+            background: #f1f5f9;
+            color: var(--text-muted);
             padding: 8px 18px;
-            border-radius: 25px;
+            border-radius: 20px;
             font-size: 12px;
             font-weight: 700;
             text-decoration: none;
-            transition: all 0.25s ease;
+            transition: all 0.2s ease;
         }
 
-        .category-badge.active, .category-badge:hover {
+        .category-badge.active {
             background: var(--primary);
             color: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
-        /* Banner Promocional Destaque */
-        .hero-banner {
-            margin: 15px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, #111111 0%, #333333 100%);
+        /* BANNER PROMOCIONAL IMPACTANTE */
+        .promo-banner {
+            margin: 16px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 20px;
+            padding: 20px;
             color: white;
-            padding: 24px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
         }
 
-        .hero-banner h2 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-        .hero-banner p { font-size: 12px; opacity: 0.8; }
-        .hero-banner .tag-promo {
+        .promo-tag {
             background: var(--accent);
-            color: black;
+            color: white;
             font-size: 10px;
             font-weight: 800;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 6px;
             text-transform: uppercase;
             display: inline-block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
-        /* Grid e Seções */
-        .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 0 15px;
+        /* LAYOUT E CARDS DOS PRODUTOS (EXCLUSIVOS PARA MODA) */
+        .main-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 16px;
         }
 
         .category-section {
-            margin-top: 25px;
+            margin-top: 24px;
             scroll-margin-top: 150px;
         }
 
-        .category-title {
+        .category-header {
             font-size: 18px;
             font-weight: 800;
             color: var(--primary);
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            margin-bottom: 14px;
         }
 
         .products-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 14px;
+            gap: 12px;
         }
 
-        @media (min-width: 600px) {
+        @media (min-width: 640px) {
             .products-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; }
         }
 
-        /* Card do Produto Premium */
         .product-card {
-            background: var(--card-white);
+            background: var(--surface);
             border-radius: 16px;
             overflow: hidden;
-            border: 1px solid #f1f2f6;
+            border: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             position: relative;
             cursor: pointer;
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+        .product-card:active {
+            transform: scale(0.98);
         }
 
-        .product-img-wrapper {
+        .img-container {
             position: relative;
             width: 100%;
-            padding-top: 120%; /* Formato Moda/Vertical 4:5 */
-            background: #f8f9fa;
+            padding-top: 125%; /* Proporção ideal de foto de roupa (4:5) */
+            background: #e2e8f0;
             overflow: hidden;
         }
 
@@ -234,31 +227,32 @@
         }
 
         .product-card:hover .product-img {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
 
-        .badge-tag {
+        /* GATILHOS VISUAIS NOS PRODUTOS */
+        .product-badge {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(17, 17, 17, 0.85);
+            top: 8px;
+            left: 8px;
+            background: rgba(15, 23, 42, 0.85);
             color: white;
             font-size: 9px;
             font-weight: 800;
             padding: 4px 8px;
-            border-radius: 20px;
+            border-radius: 12px;
             text-transform: uppercase;
             backdrop-filter: blur(4px);
         }
 
-        .product-info {
+        .product-details {
             padding: 12px;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
         }
 
-        .product-name {
+        .product-title {
             font-size: 13px;
             font-weight: 700;
             color: var(--primary);
@@ -266,7 +260,7 @@
             line-height: 1.3;
         }
 
-        .product-desc {
+        .product-description {
             font-size: 11px;
             color: var(--text-muted);
             margin-bottom: 10px;
@@ -277,7 +271,7 @@
             -webkit-box-orient: vertical;
         }
 
-        .product-footer {
+        .product-bottom {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -290,26 +284,25 @@
             color: var(--primary);
         }
 
-        .btn-add-cart {
+        .add-btn {
             background: var(--primary);
             color: white;
-            border: none;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12px;
-            transition: background 0.2s;
+            font-size: 13px;
+            border: none;
         }
 
-        /* Modal Bottom Sheet */
+        /* MODAL ESTILO BOTTOM SHEET (SHEIN / ALIEXPRESS) */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(3px);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
             display: none;
             justify-content: center;
             align-items: flex-end;
@@ -322,7 +315,7 @@
             max-width: 500px;
             border-radius: 24px 24px 0 0;
             padding: 24px;
-            animation: slideUp 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes slideUp {
@@ -337,21 +330,38 @@
             margin-bottom: 20px;
         }
 
-        .close-btn { background: #f1f2f6; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
+        .close-btn {
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
 
         .option-group { margin-bottom: 18px; }
-        .option-group label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; color: var(--text-muted); }
-        .options-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+        .option-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+        }
+
+        .options-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .btn-option {
             padding: 10px 18px;
-            border: 1px solid #e9ecef;
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             background: white;
             cursor: pointer;
             font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
+            font-weight: 700;
+            transition: all 0.15s ease;
         }
 
         .btn-option.selected {
@@ -362,19 +372,19 @@
 
         .btn-confirm-add {
             width: 100%;
-            background: var(--primary);
+            background: var(--accent);
             color: white;
             border: none;
             padding: 16px;
             border-radius: 16px;
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             margin-top: 10px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 8px 20px -4px rgba(225, 29, 72, 0.4);
         }
 
-        /* Barra Flutuante da Sacola */
+        /* BARRA DE COMPRA FLUTUANTE */
         .cart-floating-btn {
             position: fixed;
             bottom: 20px;
@@ -385,16 +395,15 @@
             padding: 16px 24px;
             border-radius: 30px;
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 800;
             text-decoration: none;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
             display: none;
             align-items: center;
-            gap: 12px;
-            z-index: 99;
-            width: calc(100% - 40px);
-            max-width: 420px;
             justify-content: space-between;
+            z-index: 99;
+            width: calc(100% - 32px);
+            max-width: 440px;
         }
     </style>
 </head>
@@ -402,22 +411,22 @@
 
 <header>
     <div class="header-top">
-        <div class="brand">
-            <h1>Boutique Elegance</h1>
-            <p>Nova Coleção 2026</p>
+        <div>
+            <h1 class="brand-title">Boutique Elegance</h1>
+            <p class="brand-subtitle">Coleção Exclusiva 2026</p>
         </div>
-        <a href="/cart" class="btn-bag" title="Minha Sacola">
+        <a href="/cart" class="btn-cart-icon" title="Ver Sacola">
             <i class="fa-solid fa-bag-shopping"></i>
         </a>
     </div>
 
-    <!-- Barra de Pesquisa Rápida -->
-    <div class="search-box">
+    <!-- Pesquisa em Tempo Real -->
+    <div class="search-container">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="input-busca" placeholder="Procurar vestidos, blusas, acessórios..." onkeyup="filtrarProdutos()">
+        <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
-    <!-- Navegação de Categorias -->
+    <!-- Categorias -->
     <div class="categories-nav">
         {% set categories_seen = [] %}
         {% for p in produtos %}
@@ -430,43 +439,39 @@
 </header>
 
 <!-- Banner Promocional -->
-<div class="hero-banner">
+<div class="promo-banner">
     <div>
-        <span class="tag-promo">Exclusivo</span>
-        <h2>Estilo que Inspira</h2>
-        <p>Entregas rápidas para todo o país</p>
+        <span class="promo-tag">Tendência</span>
+        <h2 style="font-size: 18px; font-weight: 800;">Renova o teu Estilo</h2>
+        <p style="font-size: 12px; opacity: 0.8; margin-top: 2px;">Entregas diretas em todo o país</p>
     </div>
-    <i class="fa-solid fa-sparkles" style="font-size: 28px; color: var(--accent);"></i>
+    <i class="fa-solid fa-gem" style="font-size: 32px; color: var(--accent);"></i>
 </div>
 
-<div class="container">
+<div class="main-container">
     {% set categories_seen_body = [] %}
     {% for cat_item in produtos %}
         {% if cat_item.categoria and cat_item.categoria not in categories_seen_body %}
             {% set _ = categories_seen_body.append(cat_item.categoria) %}
             
             <div class="category-section" id="cat-{{ loop.index }}">
-                <div class="category-title">
-                    <span>{{ cat_item.categoria }}</span>
-                </div>
+                <h3 class="category-header">{{ cat_item.categoria }}</h3>
                 
                 <div class="products-grid">
                     {% for p in produtos %}
                         {% if p.categoria == cat_item.categoria %}
                             
                             <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos }}', '{{ p.cores }}')">
-                                <div class="product-img-wrapper">
-                                    <span class="badge-tag">Novo</span>
+                                <div class="img-container">
+                                    <span class="product-badge">Novo</span>
                                     <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
                                 </div>
-                                <div class="product-info">
-                                    <h4 class="product-name">{{ p.nome }}</h4>
-                                    <p class="product-desc">{{ p.descricao if p.descricao else '' }}</p>
-                                    <div class="product-footer">
+                                <div class="product-details">
+                                    <h4 class="product-title">{{ p.nome }}</h4>
+                                    <p class="product-description">{{ p.descricao if p.descricao else '' }}</p>
+                                    <div class="product-bottom">
                                         <span class="product-price">{{ p.preco }} MT</span>
-                                        <span class="btn-add-cart">
-                                            <i class="fa-solid fa-plus"></i>
-                                        </span>
+                                        <button class="add-btn"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -480,7 +485,7 @@
     {% endfor %}
 </div>
 
-<!-- Modal de Variações (Tamanho e Cor) -->
+<!-- Modal para Seleção de Tamanhos e Cores -->
 <div class="modal-overlay" id="modal-variacoes">
     <div class="modal-content">
         <div class="modal-header">
@@ -489,13 +494,13 @@
         </div>
         
         <div class="option-group">
-            <label>Tamanho</label>
-            <div class="options-btns" id="container-tamanhos"></div>
+            <label>Selecione o Tamanho</label>
+            <div class="options-grid" id="container-tamanhos"></div>
         </div>
 
         <div class="option-group">
-            <label>Cor</label>
-            <div class="options-btns" id="container-cores"></div>
+            <label>Selecione a Cor</label>
+            <div class="options-grid" id="container-cores"></div>
         </div>
 
         <button class="btn-confirm-add" onclick="confirmarAdicionarCarrinho()">Adicionar à Sacola</button>
@@ -517,9 +522,10 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     produtoSelecionado = { id, nome, preco, tamanho: '', cor: '' };
     document.getElementById('modal-produto-nome').innerText = nome;
 
+    // Processar Tamanhos
     const containerTamanhos = document.getElementById('container-tamanhos');
     containerTamanhos.innerHTML = '';
-    const tamanhos = tamanhosStr ? tamanhosStr.split(',') : ['Único'];
+    const tamanhos = tamanhosStr ? tamanhosStr.split(',') : ['S', 'M', 'L'];
     tamanhos.forEach((t, index) => {
         const btn = document.createElement('button');
         btn.className = 'btn-option' + (index === 0 ? ' selected' : '');
@@ -533,6 +539,7 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
         containerTamanhos.appendChild(btn);
     });
 
+    // Processar Cores
     const containerCores = document.getElementById('container-cores');
     containerCores.innerHTML = '';
     const cores = coresStr ? coresStr.split(',') : ['Padrão'];
@@ -571,6 +578,18 @@ function filtrarProdutos() {
         card.style.display = nome.includes(termo) ? 'flex' : 'none';
     });
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    const badges = document.querySelectorAll('.category-badge');
+    if(badges.length > 0) badges[0].classList.add('active');
+
+    badges.forEach(badge => {
+        badge.addEventListener('click', function() {
+            badges.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+});
 </script>
 
 </body>
