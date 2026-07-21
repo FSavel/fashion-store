@@ -15,7 +15,6 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "loja_moda_secret_key_2026")
 # ======================================================
 # CONFIGURAÇÃO DO CLOUDINARY (UPLOADS DE IMAGENS)
 # ======================================================
-# Utiliza a URL com credenciais que configuramos previamente
 os.environ["CLOUDINARY_URL"] = os.environ.get(
     "CLOUDINARY_URL", 
     "cloudinary://336478923929577:fIoPC_rrW0nCqqH1nUX3lrYATkM@a0xqn8ql"
@@ -54,7 +53,7 @@ def invalidate_catalog_cache():
     CACHE_PRODUTOS = None
 
 # ======================================================
-# ROTAS PWA (SERVICE WORKER E MANIFEST)
+# ROTAS PWA (SERVICE WORKER, MANIFEST E ÍCONES)
 # ======================================================
 @app.route("/sw.js")
 def service_worker():
@@ -63,6 +62,14 @@ def service_worker():
 @app.route("/manifest.json")
 def manifest():
     return send_from_directory("static", "manifest.json", mimetype="application/json")
+
+# Rota de fallback para evitar o erro 404 nos logs caso o ícone ainda não exista
+@app.route("/static/icons/<path:filename>")
+def serve_icons(filename):
+    try:
+        return send_from_directory("static/icons", filename)
+    except Exception:
+        return "", 204
 
 # ======================================================
 # ROTAS DA LOJA (CATÁLOGO E SACOLA)
@@ -136,19 +143,24 @@ def admin_login():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    """Exibe o painel de gestão com a lista de produtos."""
+    """Exibe o painel de gestão com a lista de produtos E pedidos."""
     produtos = load_catalog()
-    return render_template("admin.html", produtos=produtos, config=Config)
+    pedidos = get_orders(Config.SHEET_ORDERS)  # <-- AGORA OS PEDIDOS SÃO CARREGADOS AQUI!
+    
+    return render_template(
+        "admin.html", 
+        produtos=produtos, 
+        pedidos=pedidos, 
+        config=Config
+    )
 
 def processar_imagem_produto(request_obj):
     """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
-    # 1. Se foi feito upload de um ficheiro de imagem
     if "foto_file" in request_obj.files and request_obj.files["foto_file"].filename != "":
         ficheiro = request_obj.files["foto_file"]
         resultado = cloudinary.uploader.upload(ficheiro, folder="boutique_elegance")
         return resultado.get("secure_url")
     
-    # 2. Se foi colada uma URL no campo de texto
     return request_obj.form.get("fotos", "")
 
 @app.route("/admin/add", methods=["POST"])
@@ -181,7 +193,6 @@ def admin_edit_product(produto_id):
     """Edita um produto existente."""
     foto_url = processar_imagem_produto(request)
     
-    # Se não foi enviada nova foto/URL, mantém a foto antiga que veio no formulário oculto
     if not foto_url:
         foto_url = request.form.get("foto_antiga", "")
 
@@ -196,13 +207,12 @@ def admin_edit_product(produto_id):
         "descricao": request.form.get("descricao")
     }
 
-    # Executa a atualização (necessita de suporte na catalog_service)
-    if 'update_product' in globals() and update_product(produto_id, produto_atualizado):
+    if update_product(produto_id, produto_atualizado):
         invalidate_catalog_cache()
         flash("Produto atualizado com sucesso!", "success")
     else:
         invalidate_catalog_cache()
-        flash("Produto atualizado!", "info")
+        flash("Erro ao atualizar produto.", "danger")
 
     return redirect(url_for("admin_dashboard"))
 
