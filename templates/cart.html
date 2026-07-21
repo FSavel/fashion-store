@@ -169,6 +169,23 @@
             box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.3);
         }
 
+        .btn-send-direct {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
         .empty-cart {
             text-align: center;
             padding: 40px 20px;
@@ -207,6 +224,11 @@
         </div>
 
         <div class="form-group">
+            <label>Número de Telefone (para contacto)</label>
+            <input type="tel" id="cliente-telefone" placeholder="Ex: 841234567 ou 861234567" required>
+        </div>
+
+        <div class="form-group">
             <label>Endereço / Bairro de Entrega</label>
             <input type="text" id="cliente-endereco" placeholder="Ex: Bairro Polana, Av. Julius Nyerere" required>
         </div>
@@ -228,7 +250,12 @@
 
         <!-- Botão SMS Alternativo -->
         <button class="btn-send-sms" onclick="enviarPedidoSMS()">
-            <i class="fa-solid fa-comment-sms" style="font-size: 18px;"></i> Sem WhatsApp? Enviar por SMS
+            <i class="fa-solid fa-comment-sms" style="font-size: 18px;"></i> Enviar por SMS
+        </button>
+
+        <!-- Botão Direto (Para Computador ou sem App de Mensagens) -->
+        <button class="btn-send-direct" onclick="enviarPedidoDireto()">
+            <i class="fa-solid fa-paper-plane" style="font-size: 16px;"></i> Enviar Pedido (A loja entra em contacto)
         </button>
     </div>
 </div>
@@ -291,18 +318,25 @@ function alterarQtd(index, delta) {
 function validarFormulario() {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const nome = document.getElementById('cliente-nome').value.trim();
+    const telefone = document.getElementById('cliente-telefone').value.trim();
     const endereco = document.getElementById('cliente-endereco').value.trim();
 
     if(cart.length === 0) {
         alert("A sua sacola está vazia!");
         return null;
     }
-    if(!nome || !endereco) {
-        alert("Por favor, preencha o seu nome e endereço de entrega.");
+    if(!nome || !telefone || !endereco) {
+        alert("Por favor, preencha o seu Nome, Telefone e Endereço de entrega.");
         return null;
     }
 
-    return { cart, nome, endereco, pagamento: document.getElementById('cliente-pagamento').value };
+    return { 
+        cart, 
+        nome, 
+        telefone, 
+        endereco, 
+        pagamento: document.getElementById('cliente-pagamento').value 
+    };
 }
 
 function enviarPedidoWhatsApp() {
@@ -311,6 +345,7 @@ function enviarPedidoWhatsApp() {
 
     let mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n`;
     mensagem += `*Cliente:* ${dados.nome}\n`;
+    mensagem += `*Contacto:* ${dados.telefone}\n`;
     mensagem += `*Endereço:* ${dados.endereco}\n`;
     mensagem += `*Pagamento:* ${dados.pagamento}\n\n`;
     mensagem += `*ITENS DO PEDIDO:*\n`;
@@ -325,9 +360,20 @@ function enviarPedidoWhatsApp() {
     mensagem += `*TOTAL DO PEDIDO:* ${total.toFixed(2)} MT\n\n`;
     mensagem += `_Aguardando confirmação de disponibilidade._`;
 
+    // Envia o pedido também para o backend Flask guardar no Google Sheets/Painel
+    fetch('/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nome: dados.nome,
+            contacto: dados.telefone,
+            endereco: dados.endereco,
+            pagamento: dados.pagamento,
+            cart: dados.cart
+        })
+    }).catch(err => console.log("Aviso ao guardar pedido:", err));
+
     const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
-    
-    // Limpa o carrinho e redireciona
     localStorage.removeItem('cart');
     window.open(url, '_blank');
 }
@@ -338,6 +384,7 @@ function enviarPedidoSMS() {
 
     let mensagem = `NOVO PEDIDO (SMS) - BOUTIQUE ELEGANCE\n\n`;
     mensagem += `Cliente: ${dados.nome}\n`;
+    mensagem += `Contacto: ${dados.telefone}\n`;
     mensagem += `Endereco: ${dados.endereco}\n`;
     mensagem += `Pagamento: ${dados.pagamento}\n\n`;
     mensagem += `ITENS:\n`;
@@ -351,13 +398,55 @@ function enviarPedidoSMS() {
 
     mensagem += `\nTOTAL: ${total.toFixed(2)} MT`;
 
-    // Trata diferenças de sintaxe no protocolo SMS entre iOS e Android
+    // Envia o pedido ao backend para registo
+    fetch('/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nome: dados.nome,
+            contacto: dados.telefone,
+            endereco: dados.endereco,
+            pagamento: dados.pagamento,
+            cart: dados.cart
+        })
+    }).catch(err => console.log("Aviso ao guardar pedido:", err));
+
     const separador = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
     const urlSMS = `sms:${TELEFONE_BOUTIQUE}${separador}body=${encodeURIComponent(mensagem)}`;
 
-    // Limpa o carrinho e abre o app de SMS
     localStorage.removeItem('cart');
     window.location.href = urlSMS;
+}
+
+function enviarPedidoDireto() {
+    const dados = validarFormulario();
+    if (!dados) return;
+
+    fetch('/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nome: dados.nome,
+            contacto: dados.telefone,
+            endereco: dados.endereco,
+            pagamento: dados.pagamento,
+            cart: dados.cart
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Obrigado, ${dados.nome}! O seu pedido foi recebido com sucesso.\nA nossa equipa entrará em contacto para o número ${dados.telefone} para confirmar a entrega.`);
+            localStorage.removeItem('cart');
+            window.location.href = '/';
+        } else {
+            alert("Ocorreu um erro ao registar o pedido. Por favor, tente novamente.");
+        }
+    })
+    .catch(error => {
+        console.error("Erro ao enviar pedido:", error);
+        alert("Erro de conexão ao registar o pedido.");
+    });
 }
 
 document.addEventListener("DOMContentLoaded", renderizarCarrinho);
