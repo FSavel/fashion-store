@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre Nós | Boutique Elegance</title>
+    
+    <!-- Ícones e Fonte -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #25d366;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 40px;
+        }
+
+        header {
+            background: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .btn-back {
+            background: #f1f5f9;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        header h1 { font-size: 18px; font-weight: 800; }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+        }
+
+        .card p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* Tabela / Lista de Horários */
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .schedule-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .schedule-item:last-child { border-bottom: none; }
+
+        .schedule-item span { font-weight: 600; color: var(--text); }
+        .schedule-item time { font-weight: 800; color: var(--primary); }
+
+        /* Estilo do Mapa / Localização */
+        .map-box {
+            width: 100%;
+            height: 200px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            margin-top: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .map-box iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        /* Créditos do Desenvolvedor */
+        .dev-credits {
+            background: #0f172a;
+            color: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 24px;
+        }
+
+        .dev-credits h3 {
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .dev-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #25d366;
+            margin-bottom: 12px;
+        }
+
+        .dev-contact {
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            color: #cbd5e1;
+        }
+
+        .dev-contact a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
+
+        .btn-request-item {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 14px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="/" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+    <h1>Sobre a Nossa Loja</h1>
+</header>
+
+<div class="container">
+
+    <!-- HISTÓRIA DA LOJA -->
+    <div class="card">
+        <h2><i class="fa-solid fa-store" style="color: var(--accent);"></i> Boutique Elegance</h2>
+        <p>
+            Bem-vindo à <b>Boutique Elegance</b>! Somos uma loja focada em trazer as melhores tendências de moda, calçados e acessórios de alta qualidade para Moçambique. O nosso compromisso é oferecer um atendimento rápido, entregas seguras e peças exclusivas para realçar o seu estilo único.
+        </p>
+    </div>
+
+    <!-- PRODUTO NÃO ENCONTRADO / ENCOMENDA ESPECIAL -->
+    <div class="card" style="border: 2px dashed var(--accent); background: #f0fdf4;">
+        <h2 style="color: #166534;"><i class="fa-solid fa-magnifying-glass"></i> Não encontrou o que procura?</h2>
+        <p style="color: #15803d;">
+            Procura uma peça, tamanho ou cor específica que não está no nosso catálogo atual? Nós fazemos encomendas personalizadas para si!
+        </p>
+        <a href="https://wa.me/258840000000?text=Olá!%20Procuro%20um%20produto%20que%20não%20encontrei%20no%20site." target="_blank" class="btn-request-item">
+            <i class="fa-brands fa-whatsapp" style="font-size: 18px;"></i> Pedir Produto Específico
+        </a>
+    </div>
+
+    <!-- HORÁRIO DE FUNCIONAMENTO -->
+    <div class="card">
+        <h2><i class="fa-solid fa-clock"></i> Horário de Atendimento</h2>
+        <div class="schedule-list">
+            <div class="schedule-item">
+                <span>Segunda a Sexta-Feira:</span>
+                <time>08:00 - 18:00</time>
+            </div>
+            <div class="schedule-item">
+                <span>Sábados:</span>
+                <time>08:30 - 15:00</time>
+            </div>
+            <div class="schedule-item">
+                <span>Domingos e Feriados:</span>
+                <time>Fechado (Online 24h)</time>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOCALIZAÇÃO -->
+    <div class="card">
+        <h2><i class="fa-solid fa-location-dot"></i> Loja Física & Localização</h2>
+        <p>Estamos localizados no centro da cidade. Visite-nos ou solicite entrega ao domicílio!</p>
+        
+        <!-- Podes colar o link do iframe do Google Maps abaixo -->
+        <div class="map-box">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3587.123456789!2d32.573!3d-25.965!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m3!2s1DMaputo!5e0!3m2!1spt-PT!2smz!4v123456789" allowfullscreen="" loading="lazy"></iframe>
+        </div>
+    </div>
+
+    <!-- CRÉDITOS DO DESENVOLVEDOR (TEUS DADOS) -->
+    <div class="dev-credits">
+        <h3>Desenvolvimento & Tecnologia</h3>
+        <div class="dev-name"><i class="fa-solid fa-code"></i> Firmino Salão Savel</div>
+        <div class="dev-contact">
+            <div><i class="fa-solid fa-phone"></i> +258 87 913 1089 / +258 84 468 1767</div>
+            <div><i class="fa-solid fa-envelope"></i> <a href="mailto:firminosavel@gmail.com">firminosavel@gmail.com</a></div>
+            <div style="font-size: 11px; margin-top: 6px; color: #64748b;">Aplicação Web de Alta Performance desenvolvida sob medida.</div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
