@@ -4,215 +4,433 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel de Gestão | Boutique Elegance</title>
-
+    
+    <!-- Fontes e Ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
             --primary: #0f172a;
-            --accent: #2563eb;
+            --accent: #25d366; /* Verde Destaque */
             --bg: #f8fafc;
             --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
             --border: #e2e8f0;
+            --warning: #f59e0b;
             --danger: #ef4444;
+            --info: #3b82f6;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg);
-            color: var(--primary);
-            padding-bottom: 50px;
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 40px;
         }
 
+        /* HEADER DO ADMIN */
         header {
             background: var(--primary);
             color: white;
-            padding: 18px 20px;
+            padding: 16px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .admin-brand {
+            font-size: 16px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-brand span {
+            background: rgba(255,255,255,0.2);
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: #ef4444;
+            color: white;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 20px auto;
             padding: 0 16px;
         }
 
-        .admin-card {
-            background: white;
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            padding: 20px;
+        /* METRICAS DO DIA */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
             margin-bottom: 24px;
         }
 
-        .admin-card h2 {
-            font-size: 16px;
-            font-weight: 800;
-            margin-bottom: 16px;
+        .metric-card {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 14px;
         }
 
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
+        .metric-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
         }
 
-        @media (min-width: 600px) {
-            .form-grid { grid-template-columns: 1fr 1fr; }
-            .full-width { grid-column: span 2; }
-        }
-
-        label {
-            display: block;
+        .metric-info h4 {
             font-size: 11px;
-            font-weight: 700;
-            color: #64748b;
+            color: var(--muted);
             text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .metric-info p {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* NAVEGAÇÃO ENTRE ABAS DA GESTÃO */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--muted);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* MONITORES DE PEDIDOS (KANBAN) */
+        .kanban-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .kanban-column {
+            background: #f1f5f9;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .column-header {
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--primary);
+        }
+
+        .count-badge {
+            background: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .order-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .order-client {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--primary);
             margin-bottom: 4px;
         }
 
-        input, select, textarea {
-            width: 100%;
-            padding: 11px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: #f8fafc;
-            font-size: 13px;
-            outline: none;
-        }
-
-        .btn-submit {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        /* Lista de Produtos Cadastrados */
-        .product-list-item {
+        .order-address {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
+            gap: 6px;
+        }
+
+        .order-items {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .order-item-line {
+            display: flex;
             justify-content: space-between;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-bottom: 10px;
-            background: white;
+            margin-bottom: 4px;
         }
 
-        .product-list-item img {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            object-fit: cover;
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            margin-top: 6px;
         }
 
-        .btn-delete {
-            background: #fee2e2;
-            color: var(--danger);
+        .order-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 8px;
             border: none;
-            width: 34px;
-            height: 34px;
             border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:active { opacity: 0.8; }
+        .btn-wsp { background: #25d366; color: white; text-align: center; text-decoration: none; }
+        .btn-advance { background: var(--primary); color: white; }
+
+        /* TABELA DE PRODUTOS (PARA ADICIONAR/ELIMINAR) */
+        .products-table-container {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-add-product {
+            background: var(--primary);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 16px;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <div>
-        <h1 style="font-size: 18px; font-weight: 800;">Painel de Gestão</h1>
-        <p style="font-size: 11px; opacity: 0.8;">Boutique Elegance</p>
+    <div class="admin-brand">
+        <i class="fa-solid fa-store"></i> Boutique Elegance <span>Admin</span>
     </div>
-    <a href="/" style="color: white; text-decoration: none; font-size: 13px; font-weight: 700;">
-        <i class="fa-solid fa-store"></i> Ver Loja
-    </a>
+    <a href="/admin/logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
 </header>
 
 <div class="container">
-    
-    <!-- Formulário para Adicionar Produto -->
-    <div class="admin-card">
-        <h2><i class="fa-solid fa-plus-circle" style="color: var(--accent);"></i> Adicionar Novo Produto</h2>
-        
-        <form action="/admin/add" method="POST">
-            <div class="form-grid">
-                <div class="full-width">
-                    <label>Nome da Peça</label>
-                    <input type="text" name="nome" placeholder="Ex: Vestido Floral de Verão" required>
-                </div>
 
-                <div>
-                    <label>Categoria</label>
-                    <input type="text" name="categoria" placeholder="Ex: Vestidos, Blusas, Calçados" required>
-                </div>
-
-                <div>
-                    <label>Preço (MT)</label>
-                    <input type="number" step="0.01" name="preco" placeholder="Ex: 2500" required>
-                </div>
-
-                <div>
-                    <label>Tamanhos (separados por vírgula)</label>
-                    <input type="text" name="tamanhos" placeholder="Ex: S, M, L, XL">
-                </div>
-
-                <div>
-                    <label>Cores (separadas por vírgula)</label>
-                    <input type="text" name="cores" placeholder="Ex: Preto, Vermelho, Branco">
-                </div>
-
-                <div class="full-width">
-                    <label>URL da Foto do Produto</label>
-                    <input type="url" name="fotos" placeholder="https://exemplo.com/imagem.jpg" required>
-                </div>
-
-                <div class="full-width">
-                    <label>Descrição Curta</label>
-                    <textarea name="descricao" rows="2" placeholder="Descreva o tecido, caimento..."></textarea>
-                </div>
+    <!-- METRICAS DO DIA -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">
+                <i class="fa-solid fa-receipt"></i>
             </div>
+            <div class="metric-info">
+                <h4>Pedidos Hoje</h4>
+                <p id="total-pedidos-count">0</p>
+            </div>
+        </div>
 
-            <button type="submit" class="btn-submit">Cadastrar Produto</button>
-        </form>
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #dcfce7; color: #16a34a;">
+                <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+            <div class="metric-info">
+                <h4>Estimativa Vendas</h4>
+                <p id="total-faturado">0 MT</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #fef3c7; color: #d97706;">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="metric-info">
+                <h4>Pendentes</h4>
+                <p id="total-pendentes">0</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Lista de Produtos para Gestão -->
-    <div class="admin-card">
-        <h2><i class="fa-solid fa-boxes-stacked"></i> Catálogo Actual ({{ produtos | length }})</h2>
+    <!-- ABAS -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="mudarAba('pedidos')"><i class="fa-solid fa-list-check"></i> Monitor de Pedidos</button>
+        <button class="tab-btn" onclick="mudarAba('produtos')"><i class="fa-solid fa-boxes-stacked"></i> Gerir Produtos</button>
+    </div>
 
-        {% for p in produtos %}
-        <div class="product-list-item">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://via.placeholder.com/100' }}" alt="">
-                <div>
-                    <h4 style="font-size: 13px; font-weight: 800;">{{ p.nome }}</h4>
-                    <p style="font-size: 11px; color: #64748b;">{{ p.categoria }} • <b>{{ p.preco }} MT</b></p>
+    <!-- ABA 1: MONITOR DE PEDIDOS (KANBAN) -->
+    <div id="section-pedidos">
+        <div class="kanban-grid">
+            
+            <!-- Coluna 1: Novos Pedidos -->
+            <div class="kanban-column">
+                <div class="column-header">
+                    <span>🟡 NOVOS CHEGADOS</span>
+                    <span class="count-badge" id="count-novos">0</span>
+                </div>
+                <div id="coluna-novos">
+                    <!-- Os cards serão injetados via JS ou Flask -->
+                    {% if pedidos %}
+                        {% for p in pedidos %}
+                        <div class="order-card">
+                            <div class="order-header">
+                                <span style="color: var(--muted);">#{{ loop.index }}</span>
+                                <span style="color: var(--warning); font-weight: 800;">Pendente</span>
+                            </div>
+                            <div class="order-client">{{ p.cliente }}</div>
+                            <div class="order-address"><i class="fa-solid fa-location-dot"></i> {{ p.contacto }}</div>
+                            
+                            <div class="order-items">
+                                {% if p.itens %}
+                                    {% for item in p.itens %}
+                                    <div class="order-item-line">
+                                        <span>{{ item.qtd }}x {{ item.nome }} ({{ item.tamanho or 'Padrão' }})</span>
+                                        <b>{{ item.preco }} MT</b>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                                <div class="order-total">
+                                    <span>Total:</span>
+                                    <span>{{ p.total if p.total else '---' }} MT</span>
+                                </div>
+                            </div>
+
+                            <div class="order-actions">
+                                <a href="https://wa.me/258{{ p.contacto }}" target="_blank" class="btn-action btn-wsp">
+                                    <i class="fa-brands fa-whatsapp"></i> Contactar
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="font-size: 12px; color: var(--muted); text-align: center; padding: 20px 0;">Nenhum pedido pendente de momento.</p>
+                    {% endif %}
                 </div>
             </div>
 
-            <form action="/admin/delete/{{ p.id }}" method="POST" onsubmit="return confirm('Tem certeza que deseja eliminar este produto?');">
-                <button type="submit" class="btn-delete" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
-            </form>
         </div>
-        {% endfor %}
+    </div>
+
+    <!-- ABA 2: GESTÃO DE PRODUTOS -->
+    <div id="section-produtos" style="display: none;">
+        <div class="products-table-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 800;">Catálogo de Produtos ({{ produtos | length if produtos else 0 }})</h3>
+            </div>
+
+            <!-- Lista Simplificada de Produtos -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% if produtos %}
+                    {% for item in produtos %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 12px;">
+                        <div>
+                            <b style="font-size: 14px;">{{ item.nome }}</b>
+                            <p style="font-size: 12px; color: var(--muted);">{{ item.categoria }} | <b>{{ item.preco }} MT</b></p>
+                        </div>
+                        <form action="/admin/delete/{{ item.id }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este produto?');">
+                            <button type="submit" style="background: #fee2e2; color: #ef4444; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700;">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
     </div>
 
 </div>
+
+<script>
+function mudarAba(aba) {
+    const btnPedidos = document.querySelectorAll('.tab-btn')[0];
+    const btnProdutos = document.querySelectorAll('.tab-btn')[1];
+    
+    if (aba === 'pedidos') {
+        document.getElementById('section-pedidos').style.display = 'block';
+        document.getElementById('section-produtos').style.display = 'none';
+        btnPedidos.classList.add('active');
+        btnProdutos.classList.remove('active');
+    } else {
+        document.getElementById('section-pedidos').style.display = 'none';
+        document.getElementById('section-produtos').style.display = 'block';
+        btnProdutos.classList.add('active');
+        btnPedidos.classList.remove('active');
+    }
+}
+</script>
 
 </body>
 </html>
