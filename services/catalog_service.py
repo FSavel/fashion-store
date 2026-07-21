@@ -131,6 +131,43 @@ def add_product(produto):
         print(f"Erro ao adicionar produto no Google Sheets: {e}")
         return False
 
+def update_product(produto_id, produto):
+    """
+    Procura o produto pelo ID na aba 'Produtos' e atualiza os seus campos.
+    """
+    spreadsheet = get_spreadsheet()
+    
+    if not spreadsheet:
+        print("Aviso: Edição simulada com sucesso (Google Sheets não configurado).")
+        return True
+
+    try:
+        sheet = spreadsheet.worksheet("Produtos")
+        records = sheet.get_all_records()
+        
+        # Procura a linha correspondente (+2 compensa cabeçalho + índice 1 do Sheets)
+        for index, row in enumerate(records):
+            if str(row.get("id")) == str(produto_id):
+                row_idx = index + 2
+                
+                # Mapeamento exato das colunas no Google Sheets:
+                # Coluna 1: id, 2: categoria, 3: nome, 4: descricao, 
+                # 5: preco, 6: fotos, 7: tamanhos, 8: cores, 9: disponivel
+                sheet.update_cell(row_idx, 2, produto.get("categoria", row.get("categoria", "")))
+                sheet.update_cell(row_idx, 3, produto.get("nome", row.get("nome", "")))
+                sheet.update_cell(row_idx, 4, produto.get("descricao", row.get("descricao", "")))
+                sheet.update_cell(row_idx, 5, produto.get("preco", row.get("preco", "")))
+                sheet.update_cell(row_idx, 6, produto.get("fotos", row.get("fotos", "")))
+                sheet.update_cell(row_idx, 7, produto.get("tamanhos", row.get("tamanhos", "")))
+                sheet.update_cell(row_idx, 8, produto.get("cores", row.get("cores", "")))
+                return True
+                
+        print(f"Produto {produto_id} não encontrado para atualização.")
+        return False
+    except Exception as e:
+        print(f"Erro ao atualizar produto no Google Sheets: {e}")
+        return False
+
 def delete_product(produto_id):
     """
     Procura o produto pelo ID na aba 'Produtos' e elimina a linha.
