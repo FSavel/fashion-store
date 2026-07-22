@@ -63,7 +63,6 @@ def service_worker():
 def manifest():
     return send_from_directory("static", "manifest.json", mimetype="application/json")
 
-# Rota de fallback para evitar o erro 404 nos logs caso o ícone ainda não exista
 @app.route("/static/icons/<path:filename>")
 def serve_icons(filename):
     try:
@@ -91,7 +90,6 @@ def cart():
     """Rota para visualizar a Sacola de Compras."""
     return render_template("cart.html", config=Config)
 
-# API para o Frontend consultar produtos atualizados via JS
 @app.route("/api/produtos")
 def api_produtos():
     return jsonify({"produtos": get_cached_catalog()})
@@ -166,10 +164,9 @@ def processar_imagem_produto(request_obj):
 @app.route("/admin/add", methods=["POST"])
 @admin_required
 def admin_add_product():
-    """Recebe o formulário de cadastro do produto (suporta upload, URL e campo de Stock)."""
+    """Recebe o formulário de cadastro do produto."""
     foto_url = processar_imagem_produto(request)
 
-    # Trata o valor de stock do formulário (padrão é 1 se não for informado)
     try:
         stock_val = int(request.form.get("stock", 1))
     except (ValueError, TypeError):
@@ -203,7 +200,6 @@ def admin_edit_product(produto_id):
     if not foto_url:
         foto_url = request.form.get("foto_antiga", "")
 
-    # Trata o valor de stock do formulário de edição
     try:
         stock_val = int(request.form.get("stock", 1))
     except (ValueError, TypeError):
@@ -255,16 +251,12 @@ def admin_logout():
     return redirect(url_for("admin_login"))
 
 # ======================================================
-# SOBRE
+# SOBRE & HEALTH
 # ======================================================
 @app.route("/sobre")
 def sobre():
-    """Exibe a página de detalhes, localização e créditos da loja."""
     return render_template("sobre.html")
-    
-# ======================================================
-# HEALTH CHECK
-# ======================================================
+
 @app.route("/health")
 def health():
     return {"status": "ok", "system": "loja-moda-app"}
