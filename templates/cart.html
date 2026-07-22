@@ -253,7 +253,7 @@
             <i class="fa-solid fa-comment-sms" style="font-size: 18px;"></i> Enviar por SMS
         </button>
 
-        <!-- Botão Direto (Para Computador ou sem App de Mensagens) -->
+        <!-- Botão Direto -->
         <button class="btn-send-direct" onclick="enviarPedidoDireto()">
             <i class="fa-solid fa-paper-plane" style="font-size: 16px;"></i> Enviar Pedido (A loja entra em contacto)
         </button>
@@ -263,14 +263,14 @@
 <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 
 <script>
-// Número do telefone da Boutique (Substitui pelo teu número real com código do país)
+// Número do telefone da Boutique (Substitua pelo seu número real com código 258)
 const TELEFONE_BOUTIQUE = "258840000000"; 
 
 function renderizarCarrinho() {
     const container = document.getElementById('cart-items-container');
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     
-    if(cart.length === 0) {
+    if (cart.length === 0) {
         container.innerHTML = `
             <div class="empty-cart">
                 <i class="fa-solid fa-bag-shopping" style="font-size: 40px; margin-bottom: 10px; opacity: 0.3;"></i>
@@ -309,7 +309,7 @@ function renderizarCarrinho() {
 function alterarQtd(index, delta) {
     let cart = JSON.parse(localStorage.getItem('cart')) || [];
     cart[index].qtd += delta;
-    if(cart[index].qtd <= 0) cart.splice(index, 1);
+    if (cart[index].qtd <= 0) cart.splice(index, 1);
     localStorage.setItem('cart', JSON.stringify(cart));
     renderizarCarrinho();
     if (typeof atualizarBarraSacola === 'function') atualizarBarraSacola();
@@ -321,11 +321,11 @@ function validarFormulario() {
     const telefone = document.getElementById('cliente-telefone').value.trim();
     const endereco = document.getElementById('cliente-endereco').value.trim();
 
-    if(cart.length === 0) {
+    if (cart.length === 0) {
         alert("A sua sacola está vazia!");
         return null;
     }
-    if(!nome || !telefone || !endereco) {
+    if (!nome || !telefone || !endereco) {
         alert("Por favor, preencha o seu Nome, Telefone e Endereço de entrega.");
         return null;
     }
@@ -339,9 +339,31 @@ function validarFormulario() {
     };
 }
 
-function enviarPedidoWhatsApp() {
+// Envia o pedido ao servidor Flask sem bloquear o fluxo em caso de falha de rede
+async function guardarPedidoNoBackend(dados) {
+    try {
+        await fetch('/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nome: dados.nome,
+                contacto: dados.telefone,
+                endereco: dados.endereco,
+                pagamento: dados.pagamento,
+                cart: dados.cart
+            })
+        });
+    } catch (err) {
+        console.warn("Aviso: O pedido continuou via mensagem, mas não pôde ser gravado no servidor:", err);
+    }
+}
+
+async function enviarPedidoWhatsApp() {
     const dados = validarFormulario();
     if (!dados) return;
+
+    // Aguarda o envio ao backend antes de abrir a app externa
+    await guardarPedidoNoBackend(dados);
 
     let mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n`;
     mensagem += `*Cliente:* ${dados.nome}\n`;
@@ -360,27 +382,17 @@ function enviarPedidoWhatsApp() {
     mensagem += `*TOTAL DO PEDIDO:* ${total.toFixed(2)} MT\n\n`;
     mensagem += `_Aguardando confirmação de disponibilidade._`;
 
-    // Envia o pedido também para o backend Flask guardar no Google Sheets/Painel
-    fetch('/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            nome: dados.nome,
-            contacto: dados.telefone,
-            endereco: dados.endereco,
-            pagamento: dados.pagamento,
-            cart: dados.cart
-        })
-    }).catch(err => console.log("Aviso ao guardar pedido:", err));
-
     const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
+    
     localStorage.removeItem('cart');
-    window.open(url, '_blank');
+    window.location.href = url;
 }
 
-function enviarPedidoSMS() {
+async function enviarPedidoSMS() {
     const dados = validarFormulario();
     if (!dados) return;
+
+    await guardarPedidoNoBackend(dados);
 
     let mensagem = `NOVO PEDIDO (SMS) - BOUTIQUE ELEGANCE\n\n`;
     mensagem += `Cliente: ${dados.nome}\n`;
@@ -398,19 +410,6 @@ function enviarPedidoSMS() {
 
     mensagem += `\nTOTAL: ${total.toFixed(2)} MT`;
 
-    // Envia o pedido ao backend para registo
-    fetch('/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            nome: dados.nome,
-            contacto: dados.telefone,
-            endereco: dados.endereco,
-            pagamento: dados.pagamento,
-            cart: dados.cart
-        })
-    }).catch(err => console.log("Aviso ao guardar pedido:", err));
-
     const separador = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
     const urlSMS = `sms:${TELEFONE_BOUTIQUE}${separador}body=${encodeURIComponent(mensagem)}`;
 
@@ -418,23 +417,25 @@ function enviarPedidoSMS() {
     window.location.href = urlSMS;
 }
 
-function enviarPedidoDireto() {
+async function enviarPedidoDireto() {
     const dados = validarFormulario();
     if (!dados) return;
 
-    fetch('/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            nome: dados.nome,
-            contacto: dados.telefone,
-            endereco: dados.endereco,
-            pagamento: dados.pagamento,
-            cart: dados.cart
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch('/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nome: dados.nome,
+                contacto: dados.telefone,
+                endereco: dados.endereco,
+                pagamento: dados.pagamento,
+                cart: dados.cart
+            })
+        });
+
+        const data = await response.json();
+
         if (data.success) {
             alert(`Obrigado, ${dados.nome}! O seu pedido foi recebido com sucesso.\nA nossa equipa entrará em contacto para o número ${dados.telefone} para confirmar a entrega.`);
             localStorage.removeItem('cart');
@@ -442,11 +443,10 @@ function enviarPedidoDireto() {
         } else {
             alert("Ocorreu um erro ao registar o pedido. Por favor, tente novamente.");
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error("Erro ao enviar pedido:", error);
         alert("Erro de conexão ao registar o pedido.");
-    });
+    }
 }
 
 document.addEventListener("DOMContentLoaded", renderizarCarrinho);
