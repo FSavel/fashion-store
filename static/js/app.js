@@ -5,17 +5,20 @@ let carrinho = JSON.parse(localStorage.getItem('carrinho_loja')) || [];
 let produtoTemp = null;
 
 /**
- * Limpa e converte qualquer preço/texto para um número válido (float).
- * Resolve problemas de espaços de milhares (ex: "2 500"), vírgulas e "MT".
+ * Converte qualquer preço/texto em número (float) limpo.
+ * Elimina espaços de milhares ("2 500"), "MT", vírgulas e caracteres invisíveis.
  */
 function limparPreco(valor) {
     if (typeof valor === 'number') return valor;
     if (!valor) return 0;
     
-    // 1. Converte para string e remove todos os tipos de espaços (normais e invisíveis/NBSP)
-    let texto = valor.toString().replace(/\s+/g, '').replace(/\u00A0/g, '');
+    // 1. Converte para texto e remove TODOS os tipos de espaços (espaço normal, tabs e NBSP de telemóvel)
+    let texto = valor.toString()
+                     .replace(/\s+/g, '')
+                     .replace(/\u00A0/g, '')
+                     .replace(/&nbsp;/g, '');
 
-    // 2. Trata vírgulas e pontos:
+    // 2. Trata vírgulas e pontos
     if (texto.includes(',') && texto.includes('.')) {
         if (texto.indexOf('.') < texto.indexOf(',')) {
             // Formato europeu/PT (2.500,00) -> remove ponto e troca vírgula por ponto
@@ -29,14 +32,14 @@ function limparPreco(valor) {
         texto = texto.replace(',', '.');
     }
 
-    // 3. Remove tudo o que não for número ou ponto decimal
+    // 3. Remove tudo o que não for dígito numérico ou ponto decimal
     let textoLimpo = texto.replace(/[^0-9.]/g, '');
     let numero = parseFloat(textoLimpo);
     
     return isNaN(numero) ? 0 : numero;
 }
 
-// Guardar estado no LocalStorage e atualizar a interface
+// Guardar estado no LocalStorage e atualizar interface
 function salvarCarrinho() {
     localStorage.setItem('carrinho_loja', JSON.stringify(carrinho));
     atualizarBarraCarrinho();
@@ -61,7 +64,7 @@ function atualizarBarraCarrinho() {
     if (totalEl) totalEl.innerText = `${totalValor.toFixed(2)} MT`;
 }
 
-// Renderiza a lista do carrinho no ecrã (caso exista um container específico)
+// Renderiza os itens no ecrã da sacola (se existir o container)
 function renderizarCarrinho() {
     const container = document.getElementById('cart-items-container') || document.getElementById('itens-carrinho');
     if (!container) return;
@@ -76,7 +79,7 @@ function renderizarCarrinho() {
         const precoNum = limparPreco(item.preco);
         const subtotal = precoNum * item.quantidade;
         html += `
-            <div class="cart-item" style="display:flex; justify-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <div class="cart-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
                 <div>
                     <strong>${item.nome}</strong><br>
                     <small>Tam: ${item.tamanho} | Cor: ${item.cor}</small><br>
@@ -89,7 +92,7 @@ function renderizarCarrinho() {
     container.innerHTML = html;
 }
 
-// Remover um item do carrinho pelo índice
+// Remover um item do carrinho
 function removerDoCarrinho(index) {
     carrinho.splice(index, 1);
     salvarCarrinho();
@@ -126,13 +129,14 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     let tamanhoSel = tamanhos[0];
     let corSel = cores[0];
 
-    // Adiciona diretamente ao carrinho
     adicionarAoCarrinho(id, nome, preco, tamanhoSel, corSel);
 }
 
-// Adicionar Produto ao Carrinho
+// Adicionar Produto ao Carrinho (Limpa o preço no momento do clique!)
 function adicionarAoCarrinho(id, nome, preco, tamanho, cor) {
+    // AQUI O PREÇO É CONVERTIDO E LIMPO DE ESPAÇOS IMEDIATAMENTE
     const precoNumerico = limparPreco(preco);
+
     const itemExistente = carrinho.find(item => item.id === id && item.tamanho === tamanho && item.cor === cor);
 
     if (itemExistente) {
@@ -162,10 +166,7 @@ function abrirCarrinho() {
     const nomeCliente = prompt("Digite o seu Nome para confirmar o pedido:", "Cliente");
     if (!nomeCliente) return;
 
-    // Número configurado para WhatsApp e SMS
     const numeroLoja = document.body.getAttribute('data-whatsapp') || "258879131089";
-
-    // Pergunta ao cliente qual canal prefere usar
     const opcao = prompt("Como deseja enviar o pedido?\n1 - WhatsApp\n2 - SMS", "1");
 
     if (opcao === "2") {
@@ -197,7 +198,7 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `*TOTAL:* ${total.toFixed(2)} MT`;
 
-    // 1. Regista no backend (Google Sheets/Admin)
+    // Regista no backend
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,14 +208,13 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
             cart: carrinho
         })
     }).then(res => res.json())
-      .then(data => console.log("Pedido registado no Admin:", data))
-      .catch(err => console.log("Erro ao registar no backend, enviado via WhatsApp."));
+      .catch(err => console.log("Offline - enviado via WhatsApp."));
 
-    // 2. Redireciona para o WhatsApp
+    // Redireciona para o WhatsApp
     const url = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank');
 
-    // 3. Limpa o carrinho e atualiza o ecrã imediatamente
+    // Limpa carrinho e atualiza o ecrã
     carrinho = [];
     salvarCarrinho();
 }
@@ -241,7 +241,7 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `TOTAL: ${total.toFixed(2)} MT`;
 
-    // 1. Regista no backend (Google Sheets/Admin)
+    // Regista no backend
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,19 +251,18 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
             cart: carrinho
         })
     }).then(res => res.json())
-      .then(data => console.log("Pedido registado no Admin:", data))
-      .catch(err => console.log("Erro ao registar no backend, enviado via SMS."));
+      .catch(err => console.log("Offline - enviado via SMS."));
 
-    // 2. Abre a aplicação de SMS no telemóvel
+    // Abre aplicação de SMS
     const url = `sms:${numeroSMS}?body=${encodeURIComponent(texto)}`;
     window.location.href = url;
 
-    // 3. Limpa o carrinho e atualiza o ecrã imediatamente
+    // Limpa carrinho e atualiza o ecrã
     carrinho = [];
     salvarCarrinho();
 }
 
-// Inicialização automática ao carregar o ecrã
+// Inicialização automática
 document.addEventListener('DOMContentLoaded', () => {
     atualizarBarraCarrinho();
     if (typeof renderizarCarrinho === 'function') {
