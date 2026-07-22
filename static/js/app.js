@@ -36,10 +36,13 @@ function limparPreco(valor) {
     return isNaN(numero) ? 0 : numero;
 }
 
-// Guardar estado no LocalStorage
+// Guardar estado no LocalStorage e atualizar a interface
 function salvarCarrinho() {
     localStorage.setItem('carrinho_loja', JSON.stringify(carrinho));
     atualizarBarraCarrinho();
+    if (typeof renderizarCarrinho === 'function') {
+        renderizarCarrinho();
+    }
 }
 
 // Atualiza o contador de itens e valor total no botão flutuante
@@ -56,6 +59,40 @@ function atualizarBarraCarrinho() {
 
     if (countEl) countEl.innerText = totalItens;
     if (totalEl) totalEl.innerText = `${totalValor.toFixed(2)} MT`;
+}
+
+// Renderiza a lista do carrinho no ecrã (caso exista um container específico)
+function renderizarCarrinho() {
+    const container = document.getElementById('cart-items-container') || document.getElementById('itens-carrinho');
+    if (!container) return;
+
+    if (carrinho.length === 0) {
+        container.innerHTML = `<p style="text-align:center; padding: 20px;">A sua sacola está vazia.</p>`;
+        return;
+    }
+
+    let html = '';
+    carrinho.forEach((item, idx) => {
+        const precoNum = limparPreco(item.preco);
+        const subtotal = precoNum * item.quantidade;
+        html += `
+            <div class="cart-item" style="display:flex; justify-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <div>
+                    <strong>${item.nome}</strong><br>
+                    <small>Tam: ${item.tamanho} | Cor: ${item.cor}</small><br>
+                    <small>${item.quantidade}x ${precoNum.toFixed(2)} MT = <strong>${subtotal.toFixed(2)} MT</strong></small>
+                </div>
+                <button onclick="removerDoCarrinho(${idx})" style="background:#ff4d4d; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">X</button>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// Remover um item do carrinho pelo índice
+function removerDoCarrinho(index) {
+    carrinho.splice(index, 1);
+    salvarCarrinho();
 }
 
 // Filtrar por categoria na página principal
@@ -89,7 +126,7 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     let tamanhoSel = tamanhos[0];
     let corSel = cores[0];
 
-    // Adiciona diretamente ao carrinho com as opções selecionadas
+    // Adiciona diretamente ao carrinho
     adicionarAoCarrinho(id, nome, preco, tamanhoSel, corSel);
 }
 
@@ -117,7 +154,7 @@ function adicionarAoCarrinho(id, nome, preco, tamanho, cor) {
 
 // Abrir resumo do carrinho e perguntar forma de envio
 function abrirCarrinho() {
-    if (carrinho.length === 0) {
+    if (!carrinho || carrinho.length === 0) {
         alert("O seu carrinho está vazio. Adicione algumas peças primeiro!");
         return;
     }
@@ -140,6 +177,11 @@ function abrirCarrinho() {
 
 // Finalizar e enviar Pedido via WhatsApp
 function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
+    if (!carrinho || carrinho.length === 0) {
+        alert("O seu carrinho está vazio.");
+        return;
+    }
+
     let texto = `*NOVO PEDIDO - BOUTIQUE*\n`;
     texto += `*Cliente:* ${nomeCliente}\n`;
     texto += `------------------------------------\n`;
@@ -155,7 +197,7 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `*TOTAL:* ${total.toFixed(2)} MT`;
 
-    // Regista a venda no backend (Google Sheets) em segundo plano
+    // 1. Regista no backend (Google Sheets/Admin)
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -164,19 +206,26 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
             contacto: "Via WhatsApp",
             cart: carrinho
         })
-    }).catch(err => console.log("Sincronização offline. Enviado via WhatsApp."));
+    }).then(res => res.json())
+      .then(data => console.log("Pedido registado no Admin:", data))
+      .catch(err => console.log("Erro ao registar no backend, enviado via WhatsApp."));
 
-    // Redireciona para o aplicativo WhatsApp
+    // 2. Redireciona para o WhatsApp
     const url = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank');
 
-    // Limpa o carrinho
+    // 3. Limpa o carrinho e atualiza o ecrã imediatamente
     carrinho = [];
     salvarCarrinho();
 }
 
 // Finalizar e enviar Pedido via SMS
 function finalizarPedidoSMS(numeroSMS, nomeCliente) {
+    if (!carrinho || carrinho.length === 0) {
+        alert("O seu carrinho está vazio.");
+        return;
+    }
+
     let texto = `NOVO PEDIDO - BOUTIQUE\n`;
     texto += `Cliente: ${nomeCliente}\n`;
     texto += `------------------------------------\n`;
@@ -192,7 +241,7 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `TOTAL: ${total.toFixed(2)} MT`;
 
-    // Regista a venda no backend (Google Sheets) em segundo plano
+    // 1. Regista no backend (Google Sheets/Admin)
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,13 +250,15 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
             contacto: "Via SMS",
             cart: carrinho
         })
-    }).catch(err => console.log("Sincronização offline. Enviado via SMS."));
+    }).then(res => res.json())
+      .then(data => console.log("Pedido registado no Admin:", data))
+      .catch(err => console.log("Erro ao registar no backend, enviado via SMS."));
 
-    // Abre a aplicação de SMS no telemóvel do cliente
+    // 2. Abre a aplicação de SMS no telemóvel
     const url = `sms:${numeroSMS}?body=${encodeURIComponent(texto)}`;
     window.location.href = url;
 
-    // Limpa o carrinho
+    // 3. Limpa o carrinho e atualiza o ecrã imediatamente
     carrinho = [];
     salvarCarrinho();
 }
@@ -215,4 +266,7 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
 // Inicialização automática ao carregar o ecrã
 document.addEventListener('DOMContentLoaded', () => {
     atualizarBarraCarrinho();
+    if (typeof renderizarCarrinho === 'function') {
+        renderizarCarrinho();
+    }
 });
