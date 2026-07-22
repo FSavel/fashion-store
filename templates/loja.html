@@ -408,13 +408,11 @@
 
 <header>
     <div class="header-top">
-        <!-- 5 Cliques no título ativam o modo Admin -->
         <div class="brand-container" onclick="ativarModoAdmin()">
             <h1 class="brand-title">Boutique Elegance</h1>
             <p class="brand-subtitle">Coleção Exclusiva 2026</p>
         </div>
 
-        <!-- BOTÃO SOBRE NÓS -->
         <a href="/sobre" style="color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 6px 12px; border-radius: 20px;">
             <i class="fa-solid fa-circle-info" style="color: var(--accent);"></i> Sobre
         </a>
@@ -426,7 +424,7 @@
         <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
-    <!-- Categorias Dinâmicas + Aba Todos -->
+    <!-- Categorias Dinâmicas -->
     <div class="categories-nav">
         <a class="category-badge active" onclick="filtrarPorCategoria('todos', this)">Todos</a>
         
@@ -462,7 +460,7 @@
             
             <div class="products-grid">
                 {% for p in items %}
-                    <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos or '' }}', '{{ p.cores or '' }}')">
+                    <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome | replace('\'', '\\\'') }}', '{{ p.preco }}', '{{ (p.tamanhos or '') | replace('\'', '\\\'') }}', '{{ (p.cores or '') | replace('\'', '\\\'') }}')">
                         <div class="img-container">
                             <span class="product-badge">Novo</span>
                             <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
@@ -483,7 +481,7 @@
 </div>
 
 <!-- Modal Seleção de Tamanhos e Cores -->
-<div class="modal-overlay" id="modal-variacoes">
+<div class="modal-overlay" id="modal-variacoes" onclick="fecharModalAoClicarFora(event)">
     <div class="modal-content">
         <div class="modal-header">
             <h3 id="modal-produto-nome" style="font-size: 16px; font-weight: 800;">Nome do Produto</h3>
@@ -535,13 +533,17 @@ function ativarModoAdmin() {
 
 // --- FILTRAGEM DE CATEGORIAS POR ABA ---
 function filtrarPorCategoria(categoriaSlug, elementoClicado) {
-    // Atualizar badge ativo
     document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
     if(elementoClicado) elementoClicado.classList.add('active');
 
-    // Exibir/Ocultar seções
+    // Limpar o campo de busca ao trocar de aba para evitar conflito
+    document.getElementById('input-busca').value = '';
+
     const secoes = document.querySelectorAll('.category-section');
     secoes.forEach(secao => {
+        // Mostra todas as cartas da seção
+        secao.querySelectorAll('.product-card').forEach(c => c.style.display = 'flex');
+
         if (categoriaSlug === 'todos' || secao.getAttribute('data-category') === categoriaSlug) {
             secao.style.display = 'block';
         } else {
@@ -596,6 +598,12 @@ function fecharModal() {
     document.getElementById('modal-variacoes').style.display = 'none';
 }
 
+function fecharModalAoClicarFora(event) {
+    if (event.target.id === 'modal-variacoes') {
+        fecharModal();
+    }
+}
+
 function confirmarAdicionarCarrinho() {
     if (typeof addToCart === 'function') {
         addToCart(produtoSelecionado.nome, produtoSelecionado.preco, produtoSelecionado.tamanho, produtoSelecionado.cor);
@@ -603,19 +611,32 @@ function confirmarAdicionarCarrinho() {
     fecharModal();
 }
 
-// --- PESQUISA EM TEMPO REAL ---
+// --- PESQUISA EM TEMPO REAL MELHORADA ---
 function filtrarProdutos() {
-    const termo = document.getElementById('input-busca').value.toLowerCase();
-    const cards = document.querySelectorAll('.product-card');
-    
-    // Se estiver pesquisando, mostra todas as seções para buscar globalmente
+    const termo = document.getElementById('input-busca').value.toLowerCase().trim();
+    const secoes = document.querySelectorAll('.category-section');
+
+    // Desmarca as abas de categoria enquanto digita
     if(termo !== '') {
-        document.querySelectorAll('.category-section').forEach(s => s.style.display = 'block');
+        document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
     }
 
-    cards.forEach(card => {
-        const nome = card.getAttribute('data-nome');
-        card.style.display = nome.includes(termo) ? 'flex' : 'none';
+    secoes.forEach(secao => {
+        const cards = secao.querySelectorAll('.product-card');
+        let produtosVisiveisNaSecao = 0;
+
+        cards.forEach(card => {
+            const nome = card.getAttribute('data-nome');
+            if (nome.includes(termo)) {
+                card.style.display = 'flex';
+                produtosVisiveisNaSecao++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Oculta a seção inteira se nenhum produto dela corresponder à busca
+        secao.style.display = produtosVisiveisNaSecao > 0 ? 'block' : 'none';
     });
 }
 </script>
