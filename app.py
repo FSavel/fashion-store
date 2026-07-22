@@ -9,7 +9,15 @@ import cloudinary.uploader
 
 from config import Config
 from utils.helpers import hora_mocambique
-from services.catalog_service import load_catalog, add_order, get_orders, add_product, delete_product, update_product
+from services.catalog_service import (
+    load_catalog, 
+    add_order, 
+    get_orders, 
+    add_product, 
+    delete_product, 
+    update_product,
+    update_order_status
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "loja_moda_secret_key_2026")
@@ -117,12 +125,12 @@ def api_produtos():
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
     """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
-    data = request.get_json(silent=True)
-
-    if not data or (not data.get("cart") and not data.get("itens")):
-        return jsonify({"success": False, "error": "Carrinho vazio"}), 400
+    data = request.get_json(silent=True) or {}
 
     cart = data.get("cart") or data.get("itens", [])
+    if not cart:
+        return jsonify({"success": False, "error": "Carrinho vazio"}), 400
+
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
     contacto = data.get("contacto") or data.get("cliente_endereco", "N/A")
 
@@ -131,7 +139,8 @@ def checkout():
         nome_cliente,
         contacto,
         cart,
-        hora_mocambique()
+        hora_mocambique(),
+        status="Pendente"
     )
 
     return jsonify({"success": sucesso})
@@ -157,16 +166,49 @@ def admin_login():
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    """Exibe o painel de gestão com a lista de produtos E pedidos."""
+    """Exibe o painel de gestão com a lista de produtos, pedidos e métricas."""
     produtos = load_catalog()
     pedidos = get_orders(Config.SHEET_ORDERS)
     
+    # Cálculo das métricas do painel
+    total_vendas = 0.0
+    pendentes_count = 0
+    
+    for p in pedidos:
+        st = str(p.get("status", "")).lower()
+        if st in ["pendente", "novo", ""]:
+            pendentes_count += 1
+            
+        if st != "cancelado":
+            total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
+            try:
+                total_vendas += float(total_str)
+            except ValueError:
+                pass
+
     return render_template(
         "admin.html", 
         produtos=produtos, 
-        pedidos=pedidos, 
+        pedidos=pedidos,
+        total_vendas=f"{total_vendas:.2f}",
+        pendentes_count=pendentes_count,
         config=Config
     )
+
+@app.route("/admin/pedidos/status", methods=["POST"])
+@admin_required
+def admin_update_order_status():
+    """Atualiza o estado de um pedido (Pendente, A caminho, Entregue, Cancelado)."""
+    pedido_id = request.form.get("pedido_id")
+    novo_status = request.form.get("status")
+
+    if pedido_id and novo_status:
+        if update_order_status(Config.SHEET_ORDERS, pedido_id, novo_status):
+            flash(f"Estado do pedido #{pedido_id} alterado para '{novo_status}'!", "success")
+        else:
+            flash("Erro ao atualizar o estado do pedido.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
 
 def processar_imagem_produto(request_obj):
     """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
