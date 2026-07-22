@@ -195,10 +195,29 @@ def admin_dashboard():
         config=Config
     )
 
+# ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
+@app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
+@admin_required
+def api_atualizar_status_pedido(pedido_id):
+    """Processa a alteração de estado vinda da requisição fetch (JSON) no admin.html."""
+    dados = request.get_json(silent=True) or {}
+    novo_status = dados.get("status")
+
+    status_validos = ["Pendente", "A Caminho", "Entregue", "Cancelado"]
+    if not novo_status or novo_status not in status_validos:
+        return jsonify({"success": False, "message": "Estado inválido."}), 400
+
+    sucesso = update_order_status(Config.SHEET_ORDERS, pedido_id, novo_status)
+    if sucesso:
+        return jsonify({"success": True, "message": "Estado atualizado com sucesso!"})
+    else:
+        return jsonify({"success": False, "message": "Erro ao atualizar na base de dados/planilha."}), 500
+
+# ROTA COMPATÍVEL COM FORMULÁRIOS TRADICIONAIS (POST FORM-DATA)
 @app.route("/admin/pedidos/status", methods=["POST"])
 @admin_required
 def admin_update_order_status():
-    """Atualiza o estado de um pedido (Pendente, A caminho, Entregue, Cancelado)."""
+    """Atualiza o estado de um pedido via submit tradicional de formulário."""
     pedido_id = request.form.get("pedido_id")
     novo_status = request.form.get("status")
 
