@@ -460,7 +460,7 @@
             </div>
             <div class="metric-info">
                 <h4>Estimativa Vendas</h4>
-                <p id="total-faturado">-- MT</p>
+                <p id="total-faturado">0 MT</p>
             </div>
         </div>
 
@@ -520,7 +520,7 @@
 
                                 <div class="order-total">
                                     <span>Total:</span>
-                                    <span>{{ p.total if p.total else '---' }} MT</span>
+                                    <span class="val-total-pedido" data-value="{{ p.total if p.total else 0 }}">{{ p.total if p.total else '---' }} MT</span>
                                 </div>
                             </div>
 
@@ -740,6 +740,22 @@ function abrirModalEditar(produto) {
 function fecharModalEdit() {
     document.getElementById('modalEdit').style.display = 'none';
 }
+
+// Cálculo Automático das Métricas ao Carregar a Página
+document.addEventListener('DOMContentLoaded', function() {
+    let totalFaturado = 0;
+    const elementosTotal = document.querySelectorAll('.val-total-pedido');
+
+    elementosTotal.forEach(el => {
+        const val = parseFloat(el.getAttribute('data-value')) || 0;
+        totalFaturado += val;
+    });
+
+    const elFaturado = document.getElementById('total-faturado');
+    if (elFaturado) {
+        elFaturado.innerText = totalFaturado.toLocaleString('pt-PT') + ' MT';
+    }
+});
 </script>
 
 </body>
