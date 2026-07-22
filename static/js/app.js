@@ -12,7 +12,7 @@ function limparPreco(valor) {
     if (typeof valor === 'number') return valor;
     if (!valor) return 0;
     
-    // 1. Converte para texto e remove TODOS os tipos de espaços (espaço normal, tabs e NBSP de telemóvel)
+    // 1. Converte para texto e remove TODOS os tipos de espaços
     let texto = valor.toString()
                      .replace(/\s+/g, '')
                      .replace(/\u00A0/g, '')
@@ -21,7 +21,7 @@ function limparPreco(valor) {
     // 2. Trata vírgulas e pontos
     if (texto.includes(',') && texto.includes('.')) {
         if (texto.indexOf('.') < texto.indexOf(',')) {
-            // Formato europeu/PT (2.500,00) -> remove ponto e troca vírgula por ponto
+            // Formato PT (2.500,00) -> remove ponto e troca vírgula por ponto
             texto = texto.replace(/\./g, '').replace(',', '.');
         } else {
             // Formato americano (2,500.00) -> remove vírgula
@@ -79,7 +79,7 @@ function renderizarCarrinho() {
         const precoNum = limparPreco(item.preco);
         const subtotal = precoNum * item.quantidade;
         html += `
-            <div class="cart-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <div class="cart-item" style="display:flex; justify-space-between; align-items:center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
                 <div>
                     <strong>${item.nome}</strong><br>
                     <small>Tam: ${item.tamanho} | Cor: ${item.cor}</small><br>
@@ -132,9 +132,8 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     adicionarAoCarrinho(id, nome, preco, tamanhoSel, corSel);
 }
 
-// Adicionar Produto ao Carrinho (Limpa o preço no momento do clique!)
+// Adicionar Produto ao Carrinho
 function adicionarAoCarrinho(id, nome, preco, tamanho, cor) {
-    // AQUI O PREÇO É CONVERTIDO E LIMPO DE ESPAÇOS IMEDIATAMENTE
     const precoNumerico = limparPreco(preco);
 
     const itemExistente = carrinho.find(item => item.id === id && item.tamanho === tamanho && item.cor === cor);
@@ -198,7 +197,7 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `*TOTAL:* ${total.toFixed(2)} MT`;
 
-    // Regista no backend
+    // Regista no backend (assíncrono)
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,12 +206,11 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
             contacto: "Via WhatsApp",
             cart: carrinho
         })
-    }).then(res => res.json())
-      .catch(err => console.log("Offline - enviado via WhatsApp."));
+    }).catch(err => console.log("Offline - enviado via WhatsApp."));
 
-    // Redireciona para o WhatsApp
+    // Redireciona diretamente para o WhatsApp no telemóvel/navegador
     const url = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+    window.location.href = url;
 
     // Limpa carrinho e atualiza o ecrã
     carrinho = [];
@@ -241,7 +239,7 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
     texto += `------------------------------------\n`;
     texto += `TOTAL: ${total.toFixed(2)} MT`;
 
-    // Regista no backend
+    // Regista no backend (assíncrono)
     fetch('/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -250,8 +248,7 @@ function finalizarPedidoSMS(numeroSMS, nomeCliente) {
             contacto: "Via SMS",
             cart: carrinho
         })
-    }).then(res => res.json())
-      .catch(err => console.log("Offline - enviado via SMS."));
+    }).catch(err => console.log("Offline - enviado via SMS."));
 
     // Abre aplicação de SMS
     const url = `sms:${numeroSMS}?body=${encodeURIComponent(texto)}`;
