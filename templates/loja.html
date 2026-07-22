@@ -413,7 +413,7 @@
             <p class="brand-subtitle">Coleção Exclusiva 2026</p>
         </div>
 
-        <!-- BOTÃO SOBRE NÓS ADICIONADO AQUI -->
+        <!-- BOTÃO SOBRE NÓS -->
         <a href="/sobre" style="color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 6px 12px; border-radius: 20px;">
             <i class="fa-solid fa-circle-info" style="color: var(--accent);"></i> Sobre
         </a>
@@ -448,39 +448,29 @@
 </div>
 
 <div class="main-container">
-    {% set categories_seen_body = [] %}
-    {% for cat_item in produtos %}
-        {% if cat_item.categoria and cat_item.categoria not in categories_seen_body %}
-            {% set _ = categories_seen_body.append(cat_item.categoria) %}
+    {% for cat_name, items in produtos | groupby('categoria') %}
+        <div class="category-section" id="cat-{{ loop.index }}">
+            <h3 class="category-header">{{ cat_name if cat_name else 'Geral' }}</h3>
             
-            <div class="category-section" id="cat-{{ loop.index }}">
-                <h3 class="category-header">{{ cat_item.categoria }}</h3>
-                
-                <div class="products-grid">
-                    {% for p in produtos %}
-                        {% if p.categoria == cat_item.categoria %}
-                            
-                            <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos or '' }}', '{{ p.cores or '' }}')">
-                                <div class="img-container">
-                                    <span class="product-badge">Novo</span>
-                                    <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
-                                </div>
-                                <div class="product-details">
-                                    <h4 class="product-title">{{ p.nome }}</h4>
-                                    <p class="product-description">{{ p.descricao if p.descricao else '' }}</p>
-                                    <div class="product-bottom">
-                                        <span class="product-price">{{ p.preco }} MT</span>
-                                        <button class="add-btn"><i class="fa-solid fa-plus"></i></button>
-                                    </div>
-                                </div>
+            <div class="products-grid">
+                {% for p in items %}
+                    <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome }}', '{{ p.preco }}', '{{ p.tamanhos or '' }}', '{{ p.cores or '' }}')">
+                        <div class="img-container">
+                            <span class="product-badge">Novo</span>
+                            <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
+                        </div>
+                        <div class="product-details">
+                            <h4 class="product-title">{{ p.nome }}</h4>
+                            <p class="product-description">{{ p.descricao if p.descricao else '' }}</p>
+                            <div class="product-bottom">
+                                <span class="product-price">{{ p.preco }} MT</span>
+                                <button class="add-btn"><i class="fa-solid fa-plus"></i></button>
                             </div>
-
-                        {% endif %}
-                    {% endfor %}
-                </div>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
-            
-        {% endif %}
+        </div>
     {% endfor %}
 </div>
 
@@ -525,7 +515,6 @@ function ativarModoAdmin() {
     cliquesAdmin++;
     clearTimeout(tempoCliqueAdmin);
     
-    // Reseta se demorar mais de 3s entre cliques
     tempoCliqueAdmin = setTimeout(() => {
         cliquesAdmin = 0;
     }, 3000);
