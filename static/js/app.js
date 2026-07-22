@@ -86,8 +86,17 @@ function abrirCarrinho() {
     const nomeCliente = prompt("Digite o seu Nome para confirmar o pedido:", "Cliente");
     if (!nomeCliente) return;
 
-    const numWhatsapp = document.body.getAttribute('data-whatsapp') || "258840000000";
-    finalizarPedidoWhatsApp(numWhatsapp, nomeCliente);
+    // Número fixado para WhatsApp e SMS: 258879131089
+    const numeroLoja = document.body.getAttribute('data-whatsapp') || "258879131089";
+
+    // Pergunta ao cliente como prefere enviar
+    const opcao = prompt("Como deseja enviar o pedido?\n1 - WhatsApp\n2 - SMS", "1");
+
+    if (opcao === "2") {
+        finalizarPedidoSMS(numeroLoja, nomeCliente);
+    } else {
+        finalizarPedidoWhatsApp(numeroLoja, nomeCliente);
+    }
 }
 
 // Enviar Pedido via WhatsApp
@@ -120,6 +129,42 @@ function finalizarPedidoWhatsApp(numeroWhatsapp, nomeCliente) {
     // Redireciona para o WhatsApp
     const url = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank');
+
+    // Limpa carrinho
+    carrinho = [];
+    salvarCarrinho();
+}
+
+// Enviar Pedido via SMS
+function finalizarPedidoSMS(numeroSMS, nomeCliente) {
+    let texto = `NOVO PEDIDO - BOUTIQUE\n`;
+    texto += `Cliente: ${nomeCliente}\n`;
+    texto += `------------------------------------\n`;
+
+    let total = 0;
+    carrinho.forEach(item => {
+        const subtotal = item.preco * item.quantidade;
+        total += subtotal;
+        texto += `• ${item.quantidade}x ${item.nome} (${item.tamanho}/${item.cor}): ${subtotal.toFixed(2)} MT\n`;
+    });
+
+    texto += `------------------------------------\n`;
+    texto += `TOTAL: ${total.toFixed(2)} MT`;
+
+    // Regista no Google Sheets em background
+    fetch('/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nome: nomeCliente,
+            contacto: "Via SMS",
+            cart: carrinho
+        })
+    }).catch(err => console.log("Sincronização em segundo plano offline. Enviado via SMS."));
+
+    // Abre a aplicação de SMS no telemóvel do cliente
+    const url = `sms:${numeroSMS}?body=${encodeURIComponent(texto)}`;
+    window.location.href = url;
 
     // Limpa carrinho
     carrinho = [];
