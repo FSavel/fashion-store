@@ -145,7 +145,7 @@ def admin_login():
 def admin_dashboard():
     """Exibe o painel de gestão com a lista de produtos E pedidos."""
     produtos = load_catalog()
-    pedidos = get_orders(Config.SHEET_ORDERS)  # <-- AGORA OS PEDIDOS SÃO CARREGADOS AQUI!
+    pedidos = get_orders(Config.SHEET_ORDERS)
     
     return render_template(
         "admin.html", 
@@ -166,8 +166,14 @@ def processar_imagem_produto(request_obj):
 @app.route("/admin/add", methods=["POST"])
 @admin_required
 def admin_add_product():
-    """Recebe o formulário de cadastro do produto (suporta upload ou URL)."""
+    """Recebe o formulário de cadastro do produto (suporta upload, URL e campo de Stock)."""
     foto_url = processar_imagem_produto(request)
+
+    # Trata o valor de stock do formulário (padrão é 1 se não for informado)
+    try:
+        stock_val = int(request.form.get("stock", 1))
+    except (ValueError, TypeError):
+        stock_val = 1
 
     novo_produto = {
         "nome": request.form.get("nome"),
@@ -175,6 +181,7 @@ def admin_add_product():
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
+        "stock": stock_val,
         "fotos": foto_url,
         "descricao": request.form.get("descricao")
     }
@@ -190,11 +197,17 @@ def admin_add_product():
 @app.route("/admin/edit/<produto_id>", methods=["POST"])
 @admin_required
 def admin_edit_product(produto_id):
-    """Edita um produto existente."""
+    """Edita um produto existente, incluindo a atualização do stock."""
     foto_url = processar_imagem_produto(request)
     
     if not foto_url:
         foto_url = request.form.get("foto_antiga", "")
+
+    # Trata o valor de stock do formulário de edição
+    try:
+        stock_val = int(request.form.get("stock", 1))
+    except (ValueError, TypeError):
+        stock_val = 1
 
     produto_atualizado = {
         "id": produto_id,
@@ -203,6 +216,7 @@ def admin_edit_product(produto_id):
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
+        "stock": stock_val,
         "fotos": foto_url,
         "descricao": request.form.get("descricao")
     }
