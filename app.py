@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from functools import wraps
 import os
 import time
+import json
+import logging
 import cloudinary
 import cloudinary.uploader
 
@@ -13,13 +15,27 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "loja_moda_secret_key_2026")
 
 # ======================================================
+# FILTRO JINJA2 PERSONALIZADO (PARSE DE JSON NO TEMPLATE)
+# ======================================================
+@app.template_filter('fromjson')
+def fromjson_filter(value):
+    """Converte strings JSON armazenadas na base de dados/planilha em listas/dicionários Python."""
+    if not value:
+        return []
+    if isinstance(value, (list, dict)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return []
+
+# ======================================================
 # CONFIGURAÇÃO DO CLOUDINARY (UPLOADS DE IMAGENS)
 # ======================================================
-os.environ["CLOUDINARY_URL"] = os.environ.get(
-    "CLOUDINARY_URL", 
-    "cloudinary://336478923929577:fIoPC_rrW0nCqqH1nUX3lrYATkM@a0xqn8ql"
-)
-cloudinary.config(secure=True)
+CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL")
+if CLOUDINARY_URL:
+    os.environ["CLOUDINARY_URL"] = CLOUDINARY_URL
+    cloudinary.config(secure=True)
 
 # Decorator para Proteger Rotas Admin
 def admin_required(f):
@@ -156,8 +172,12 @@ def processar_imagem_produto(request_obj):
     """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
     if "foto_file" in request_obj.files and request_obj.files["foto_file"].filename != "":
         ficheiro = request_obj.files["foto_file"]
-        resultado = cloudinary.uploader.upload(ficheiro, folder="boutique_elegance")
-        return resultado.get("secure_url")
+        try:
+            resultado = cloudinary.uploader.upload(ficheiro, folder="boutique_elegance")
+            return resultado.get("secure_url")
+        except Exception as e:
+            logging.error(f"Erro no upload do Cloudinary: {e}")
+            return None
     
     return request_obj.form.get("fotos", "")
 
@@ -179,7 +199,7 @@ def admin_add_product():
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
         "stock": stock_val,
-        "fotos": foto_url,
+        "fotos": foto_url or "",
         "descricao": request.form.get("descricao")
     }
 
@@ -221,7 +241,6 @@ def admin_edit_product(produto_id):
         invalidate_catalog_cache()
         flash("Produto atualizado com sucesso!", "success")
     else:
-        invalidate_catalog_cache()
         flash("Erro ao atualizar produto.", "danger")
 
     return redirect(url_for("admin_dashboard"))
