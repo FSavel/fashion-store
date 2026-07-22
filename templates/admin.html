@@ -240,7 +240,13 @@
         .order-item-line {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        
+        .order-item-line:last-child {
+            border-bottom: none;
         }
 
         .order-total {
@@ -495,14 +501,23 @@
                             <div class="order-address"><i class="fa-solid fa-location-dot"></i> {{ p.contacto }}</div>
                             
                             <div class="order-items">
-                                {% if p.itens %}
-                                    {% for item in p.itens %}
-                                    <div class="order-item-line">
-                                        <span>{{ item.qtd }}x {{ item.nome }} ({{ item.tamanho or 'Padrão' }})</span>
-                                        <b>{{ item.preco }} MT</b>
-                                    </div>
-                                    {% endfor %}
-                                {% endif %}
+                                <!-- CONVERSÃO CORRETA DE STRING JSON PARA LISTA -->
+                                {% set itens_lista = p.itens if p.itens is iterable and p.itens is not string else (p.itens | fromjson if p.itens else []) %}
+                                
+                                {% for item in itens_lista %}
+                                <div class="order-item-line">
+                                    <span>
+                                        <strong>{{ item.qtd }}x</strong> {{ item.nome }} 
+                                        <small style="color: var(--muted);">({{ item.tamanho or 'Padrão' }}{% if item.cor %}, {{ item.cor }}{% endif %})</small>
+                                    </span>
+                                    <b>{{ item.preco }} MT</b>
+                                </div>
+                                {% else %}
+                                <div class="order-item-line">
+                                    <span>Sem detalhes de itens</span>
+                                </div>
+                                {% endfor %}
+
                                 <div class="order-total">
                                     <span>Total:</span>
                                     <span>{{ p.total if p.total else '---' }} MT</span>
@@ -510,7 +525,7 @@
                             </div>
 
                             <div class="order-actions">
-                                <a href="https://wa.me/258{{ p.contacto }}" target="_blank" class="btn-action btn-wsp">
+                                <a href="https://wa.me/258{{ p.contacto }}?text=Olá%20{{ p.cliente }},%20recebemos%20o%20seu%20pedido!" target="_blank" class="btn-action btn-wsp">
                                     <i class="fa-brands fa-whatsapp"></i> Contactar
                                 </a>
                             </div>
@@ -606,12 +621,12 @@
                 </div>
             </div>
 
-            <!-- OPÇÕES DE FOTO: UPLOAD OU URL MANUALLY -->
+            <!-- OPÇÕES DE FOTO -->
             <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
                 <label><i class="fa-solid fa-cloud-arrow-up"></i> Carregar Foto Real (Cloudinary)</label>
                 <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
                 
-                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou colar Link de Imagem (Google Sheets)</label>
+                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou colar Link de Imagem</label>
                 <input type="url" name="fotos" class="form-control" placeholder="https://exemplo.com/imagem.jpg">
             </div>
 
