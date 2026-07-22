@@ -3,13 +3,14 @@
 ====================================================== */
 :root {
     --primary: #27ae60;         /* Verde de destaque para botões e seleção */
+    --primary-dark: #219150;    /* Verde mais escuro para hover */
     --secondary: #111111;       /* Cor de texto e títulos */
     --accent: #f39c12;          /* Destaque secundário */
     --bg-light: #f4f6f9;        /* Fundo suave do site */
     --card-white: #ffffff;      /* Fundo limpo dos cartões */
-    --muted: #7f8c8d;         /* Texto secundário cinzento */
+    --muted: #7f8c8d;           /* Texto secundário cinzento */
     --border-color: #f1f2f6;   /* Bordas discretas */
-    --danger: #e74c3c;        /* Alerta offline */
+    --danger: #e74c3c;          /* Alerta offline */
 }
 
 /* ======================================================
@@ -28,6 +29,12 @@ body {
     color: var(--secondary);
     padding-bottom: 110px; /* Espaço para não cobrir itens com a barra do carrinho */
     line-height: 1.4;
+}
+
+/* Prevenção de seleção acidental em botões em telas touch */
+button, .btn-cat, .cart-float {
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* ======================================================
@@ -69,6 +76,7 @@ header {
     white-space: nowrap;
     padding: 12px 20px 5px 20px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .categories-container::-webkit-scrollbar {
@@ -85,6 +93,7 @@ header {
     border: none;
     cursor: pointer;
     transition: all 0.2s ease;
+    flex-shrink: 0; /* Impede que os botões encolham */
 }
 
 .btn-cat.active, .btn-cat:hover {
@@ -176,6 +185,14 @@ header {
     color: var(--secondary);
 }
 
+/* Container do rodapé do cartão (Preço + Botão +) */
+.product-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
 /* Botão Redondo de Adicionar (+) */
 .btn-add {
     background: var(--primary);
@@ -187,23 +204,16 @@ header {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     box-shadow: 0 4px 10px rgba(39, 174, 96, 0.25);
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .btn-add:hover {
+    background: var(--primary-dark);
     transform: scale(1.08);
-}
-
-/* Container do rodapé do cartão (Preço + Botão +) */
-.product-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
 }
 
 /* ======================================================
@@ -228,7 +238,11 @@ header {
     width: calc(100% - 40px);
     max-width: 420px;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.cart-float:hover {
+    background: var(--primary-dark);
 }
 
 .cart-float:active {
