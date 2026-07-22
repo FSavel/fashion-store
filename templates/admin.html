@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Gestão | Boutique Elegance</title>
+    
+    <!-- Fontes e Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #25d366; /* Verde Destaque */
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding-bottom: 40px;
+        }
+
+        /* HEADER DO ADMIN */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .admin-brand {
+            font-size: 16px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-brand span {
+            background: rgba(255,255,255,0.2);
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        /* MENSAGENS FLASH */
+        .alert-container {
+            margin-bottom: 16px;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* METRICAS DO DIA */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--surface);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .metric-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .metric-info h4 {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .metric-info p {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* NAVEGAÇÃO ENTRE ABAS DA GESTÃO */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--muted);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* MONITORES DE PEDIDOS (KANBAN) */
+        .kanban-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .kanban-column {
+            background: #f1f5f9;
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .column-header {
+            font-size: 14px;
+            font-weight: 800;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--primary);
+        }
+
+        .count-badge {
+            background: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .order-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .order-client {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .order-address {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .order-items {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .order-item-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        
+        .order-item-line:last-child {
+            border-bottom: none;
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            margin-top: 6px;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:active { opacity: 0.8; }
+        .btn-wsp { background: #25d366; color: white; text-align: center; text-decoration: none; }
+
+        /* TABELA DE PRODUTOS */
+        .products-table-container {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .btn-add-product {
+            background: var(--primary);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .btn-add-product:hover { background: #1e293b; }
+
+        .product-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            gap: 12px;
+        }
+
+        .product-thumb {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+        }
+
+        .btn-edit {
+            background: #e0f2fe;
+            color: #0284c7;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .btn-delete {
+            background: #fee2e2;
+            color: #ef4444;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        /* MODAL DE PRODUTO (ADICIONAR E EDITAR) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 { font-size: 18px; font-weight: 800; }
+
+        .close-modal {
+            background: none; border: none;
+            font-size: 20px; color: var(--muted);
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="admin-brand">
+        <i class="fa-solid fa-store"></i> Boutique Elegance <span>Admin</span>
+    </div>
+    <a href="/admin/logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
+</header>
+
+<div class="container">
+
+    <!-- ALERTAS FLASH -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="alert-container">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- METRICAS DO DIA -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+            <div class="metric-info">
+                <h4>Pedidos Hoje</h4>
+                <p id="total-pedidos-count">{{ pedidos | length if pedidos else 0 }}</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #dcfce7; color: #16a34a;">
+                <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+            <div class="metric-info">
+                <h4>Estimativa Vendas</h4>
+                <p id="total-faturado">0 MT</p>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon" style="background: #fef3c7; color: #d97706;">
+                <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="metric-info">
+                <h4>Pendentes</h4>
+                <p id="total-pendentes">{{ pedidos | length if pedidos else 0 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABAS -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="mudarAba('pedidos')"><i class="fa-solid fa-list-check"></i> Monitor de Pedidos</button>
+        <button class="tab-btn" onclick="mudarAba('produtos')"><i class="fa-solid fa-boxes-stacked"></i> Gerir Produtos</button>
+    </div>
+
+    <!-- ABA 1: MONITOR DE PEDIDOS (KANBAN) -->
+    <div id="section-pedidos">
+        <div class="kanban-grid">
+            <div class="kanban-column">
+                <div class="column-header">
+                    <span>🟡 NOVOS CHEGADOS</span>
+                    <span class="count-badge" id="count-novos">{{ pedidos | length if pedidos else 0 }}</span>
+                </div>
+                <div id="coluna-novos">
+                    {% if pedidos %}
+                        {% for p in pedidos %}
+                        <div class="order-card">
+                            <div class="order-header">
+                                <span style="color: var(--muted);">#{{ loop.index }}</span>
+                                <span style="color: var(--warning); font-weight: 800;">Pendente</span>
+                            </div>
+                            <div class="order-client">{{ p.cliente }}</div>
+                            <div class="order-address"><i class="fa-solid fa-location-dot"></i> {{ p.contacto }}</div>
+                            
+                            <div class="order-items">
+                                <!-- CONVERSÃO CORRETA DE STRING JSON PARA LISTA -->
+                                {% set itens_lista = p.itens if p.itens is iterable and p.itens is not string else (p.itens | fromjson if p.itens else []) %}
+                                
+                                {% for item in itens_lista %}
+                                <div class="order-item-line">
+                                    <span>
+                                        <strong>{{ item.qtd }}x</strong> {{ item.nome }} 
+                                        <small style="color: var(--muted);">({{ item.tamanho or 'Padrão' }}{% if item.cor %}, {{ item.cor }}{% endif %})</small>
+                                    </span>
+                                    <b>{{ item.preco }} MT</b>
+                                </div>
+                                {% else %}
+                                <div class="order-item-line">
+                                    <span>Sem detalhes de itens</span>
+                                </div>
+                                {% endfor %}
+
+                                <div class="order-total">
+                                    <span>Total:</span>
+                                    <span class="val-total-pedido" data-value="{{ p.total if p.total else 0 }}">{{ p.total if p.total else '---' }} MT</span>
+                                </div>
+                            </div>
+
+                            <div class="order-actions">
+                                <a href="https://wa.me/258{{ p.contacto }}?text=Olá%20{{ p.cliente }},%20recebemos%20o%20seu%20pedido!" target="_blank" class="btn-action btn-wsp">
+                                    <i class="fa-brands fa-whatsapp"></i> Contactar
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="font-size: 12px; color: var(--muted); text-align: center; padding: 20px 0;">Nenhum pedido pendente de momento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA 2: GESTÃO DE PRODUTOS -->
+    <div id="section-produtos" style="display: none;">
+        <div class="products-table-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 800;">Catálogo de Produtos ({{ produtos | length if produtos else 0 }})</h3>
+                <button class="btn-add-product" onclick="abrirModalAdd()">
+                    <i class="fa-solid fa-plus"></i> Adicionar Produto
+                </button>
+            </div>
+
+            <!-- Lista de Produtos com Opção de Editar e Eliminar -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% if produtos %}
+                    {% for item in produtos %}
+                    <div class="product-item-row">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img src="{{ item.fotos or '/static/icons/icon-192.png' }}" class="product-thumb" alt="{{ item.nome }}" onerror="this.src='/static/icons/icon-192.png'">
+                            <div>
+                                <b style="font-size: 14px; display: block;">{{ item.nome }}</b>
+                                <p style="font-size: 12px; color: var(--muted);">
+                                    {{ item.categoria }} | <b style="color: var(--primary);">{{ item.preco }} MT</b>
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <!-- BOTÃO DE EDITAR -->
+                            <button class="btn-edit" onclick='abrirModalEditar({{ item | tojson | safe }})'>
+                                <i class="fa-solid fa-pen-to-square"></i> Editar
+                            </button>
+                            <!-- BOTÃO DA LIXEIRA -->
+                            <form action="/admin/delete/{{ item.id }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este produto?');" style="margin: 0;">
+                                <button type="submit" class="btn-delete">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="font-size: 13px; color: var(--muted); text-align: center; padding: 20px 0;">Nenhum produto registado no catálogo.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL: ADICIONAR PRODUTO -->
+<div class="modal-overlay" id="modalAdd">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-plus"></i> Novo Produto</h3>
+            <button class="close-modal" onclick="fecharModalAdd()">&times;</button>
+        </div>
+        <form action="/admin/add" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Nome do Produto *</label>
+                <input type="text" name="nome" class="form-control" placeholder="Ex: Vestido Longo Seda" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Categoria *</label>
+                    <input type="text" name="categoria" class="form-control" placeholder="Ex: Vestidos" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Preço (MT) *</label>
+                    <input type="number" name="preco" class="form-control" placeholder="1500" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Tamanhos</label>
+                    <input type="text" name="tamanhos" class="form-control" placeholder="S, M, L, XL">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Cores</label>
+                    <input type="text" name="cores" class="form-control" placeholder="Preto, Vermelho">
+                </div>
+            </div>
+
+            <!-- OPÇÕES DE FOTO -->
+            <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
+                <label><i class="fa-solid fa-cloud-arrow-up"></i> Carregar Foto Real (Cloudinary)</label>
+                <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
+                
+                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou colar Link de Imagem</label>
+                <input type="url" name="fotos" class="form-control" placeholder="https://exemplo.com/imagem.jpg">
+            </div>
+
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea name="descricao" class="form-control" rows="3" placeholder="Detalhes do tecido, corte..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">Gravar Produto</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR PRODUTO -->
+<div class="modal-overlay" id="modalEdit">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-pen-to-square"></i> Editar Produto</h3>
+            <button class="close-modal" onclick="fecharModalEdit()">&times;</button>
+        </div>
+        <form id="formEdit" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="foto_antiga" id="edit_foto_antiga">
+
+            <div class="form-group">
+                <label>Nome do Produto *</label>
+                <input type="text" name="nome" id="edit_nome" class="form-control" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Categoria *</label>
+                    <input type="text" name="categoria" id="edit_categoria" class="form-control" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Preço (MT) *</label>
+                    <input type="number" name="preco" id="edit_preco" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex:1;">
+                    <label>Tamanhos</label>
+                    <input type="text" name="tamanhos" id="edit_tamanhos" class="form-control">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Cores</label>
+                    <input type="text" name="cores" id="edit_cores" class="form-control">
+                </div>
+            </div>
+
+            <!-- OPÇÕES DE FOTO: EDITAR -->
+            <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
+                <label><i class="fa-solid fa-cloud-arrow-up"></i> Substituir com Foto Real (Cloudinary)</label>
+                <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
+                
+                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou alterar Link de Imagem</label>
+                <input type="url" name="fotos" id="edit_fotos" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea name="descricao" id="edit_descricao" class="form-control" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">Guardar Alterações</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function mudarAba(aba) {
+    const btnPedidos = document.querySelectorAll('.tab-btn')[0];
+    const btnProdutos = document.querySelectorAll('.tab-btn')[1];
+    
+    if (aba === 'pedidos') {
+        document.getElementById('section-pedidos').style.display = 'block';
+        document.getElementById('section-produtos').style.display = 'none';
+        btnPedidos.classList.add('active');
+        btnProdutos.classList.remove('active');
+    } else {
+        document.getElementById('section-pedidos').style.display = 'none';
+        document.getElementById('section-produtos').style.display = 'block';
+        btnProdutos.classList.add('active');
+        btnPedidos.classList.remove('active');
+    }
+}
+
+// Controle do Modal Adicionar
+function abrirModalAdd() {
+    document.getElementById('modalAdd').style.display = 'flex';
+}
+function fecharModalAdd() {
+    document.getElementById('modalAdd').style.display = 'none';
+}
+
+// Controle do Modal Editar
+function abrirModalEditar(produto) {
+    document.getElementById('formEdit').action = '/admin/edit/' + produto.id;
+    
+    document.getElementById('edit_nome').value = produto.nome || '';
+    document.getElementById('edit_categoria').value = produto.categoria || '';
+    document.getElementById('edit_preco').value = produto.preco || '';
+    document.getElementById('edit_tamanhos').value = produto.tamanhos || '';
+    document.getElementById('edit_cores').value = produto.cores || '';
+    document.getElementById('edit_fotos').value = produto.fotos || '';
+    document.getElementById('edit_foto_antiga').value = produto.fotos || '';
+    document.getElementById('edit_descricao').value = produto.descricao || '';
+
+    document.getElementById('modalEdit').style.display = 'flex';
+}
+function fecharModalEdit() {
+    document.getElementById('modalEdit').style.display = 'none';
+}
+
+// Cálculo Automático das Métricas ao Carregar a Página
+document.addEventListener('DOMContentLoaded', function() {
+    let totalFaturado = 0;
+    const elementosTotal = document.querySelectorAll('.val-total-pedido');
+
+    elementosTotal.forEach(el => {
+        const val = parseFloat(el.getAttribute('data-value')) || 0;
+        totalFaturado += val;
+    });
+
+    const elFaturado = document.getElementById('total-faturado');
+    if (elFaturado) {
+        elFaturado.innerText = totalFaturado.toLocaleString('pt-PT') + ' MT';
+    }
+});
+</script>
+
+</body>
+</html>
