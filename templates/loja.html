@@ -124,6 +124,7 @@
             font-weight: 700;
             text-decoration: none;
             transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .category-badge.active {
@@ -285,7 +286,7 @@
             align-items: center;
             font-size: 13px;
             border: none;
-            pointer-events: none; /* Clique passa para o card */
+            pointer-events: none;
         }
 
         /* MODAL BOTTOM SHEET */
@@ -375,13 +376,13 @@
             box-shadow: 0 8px 20px -4px rgba(225, 29, 72, 0.4);
         }
 
-        /* BARRA FLUTUANTE DA SACOLA (VERDE CHAMATIVO) */
+        /* BARRA FLUTUANTE DA SACOLA */
         .cart-floating-btn {
             position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: #25d366; /* Verde estilo WhatsApp */
+            background: #25d366;
             color: white;
             padding: 16px 24px;
             border-radius: 30px;
@@ -425,13 +426,18 @@
         <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
-    <!-- Categorias -->
+    <!-- Categorias Dinâmicas + Aba Todos -->
     <div class="categories-nav">
+        <a class="category-badge active" onclick="filtrarPorCategoria('todos', this)">Todos</a>
+        
         {% set categories_seen = [] %}
         {% for p in produtos %}
             {% if p.categoria and p.categoria not in categories_seen %}
                 {% set _ = categories_seen.append(p.categoria) %}
-                <a href="#cat-{{ loop.index }}" class="category-badge">{{ p.categoria }}</a>
+                {% set cat_slug = (p.categoria | lower | replace(' ', '-')) %}
+                <a class="category-badge" onclick="filtrarPorCategoria('{{ cat_slug }}', this)">
+                    {{ p.categoria }}
+                </a>
             {% endif %}
         {% endfor %}
     </div>
@@ -449,7 +455,9 @@
 
 <div class="main-container">
     {% for cat_name, items in produtos | groupby('categoria') %}
-        <div class="category-section" id="cat-{{ loop.index }}">
+        {% set cat_slug = ((cat_name if cat_name else 'geral') | lower | replace(' ', '-')) %}
+        
+        <div class="category-section" id="cat-{{ cat_slug }}" data-category="{{ cat_slug }}">
             <h3 class="category-header">{{ cat_name if cat_name else 'Geral' }}</h3>
             
             <div class="products-grid">
@@ -496,7 +504,7 @@
     </div>
 </div>
 
-<!-- Barra Flutuante da Sacola (Chamativa) -->
+<!-- Barra Flutuante da Sacola -->
 <a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
     <span><i class="fa-solid fa-bag-shopping" style="font-size: 18px;"></i> &nbsp;Ver Sacola de Compras</span>
     <span id="cart-counter" style="background: white; color: #15803d; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: 800;">0</span>
@@ -523,6 +531,23 @@ function ativarModoAdmin() {
         cliquesAdmin = 0;
         window.location.href = "/admin/login";
     }
+}
+
+// --- FILTRAGEM DE CATEGORIAS POR ABA ---
+function filtrarPorCategoria(categoriaSlug, elementoClicado) {
+    // Atualizar badge ativo
+    document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
+    if(elementoClicado) elementoClicado.classList.add('active');
+
+    // Exibir/Ocultar seções
+    const secoes = document.querySelectorAll('.category-section');
+    secoes.forEach(secao => {
+        if (categoriaSlug === 'todos' || secao.getAttribute('data-category') === categoriaSlug) {
+            secao.style.display = 'block';
+        } else {
+            secao.style.display = 'none';
+        }
+    });
 }
 
 // --- LÓGICA DO MODAL DE VARIAÇÕES ---
@@ -578,26 +603,21 @@ function confirmarAdicionarCarrinho() {
     fecharModal();
 }
 
+// --- PESQUISA EM TEMPO REAL ---
 function filtrarProdutos() {
     const termo = document.getElementById('input-busca').value.toLowerCase();
     const cards = document.querySelectorAll('.product-card');
+    
+    // Se estiver pesquisando, mostra todas as seções para buscar globalmente
+    if(termo !== '') {
+        document.querySelectorAll('.category-section').forEach(s => s.style.display = 'block');
+    }
+
     cards.forEach(card => {
         const nome = card.getAttribute('data-nome');
         card.style.display = nome.includes(termo) ? 'flex' : 'none';
     });
 }
-
-document.addEventListener("DOMContentLoaded", function() {
-    const badges = document.querySelectorAll('.category-badge');
-    if(badges.length > 0) badges[0].classList.add('active');
-
-    badges.forEach(badge => {
-        badge.addEventListener('click', function() {
-            badges.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-});
 </script>
 
 </body>
