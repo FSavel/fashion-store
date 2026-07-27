@@ -279,6 +279,17 @@
         .btn-action:active { opacity: 0.8; }
         .btn-wsp { background: #25d366; color: white; text-align: center; text-decoration: none; }
 
+        .select-status {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 700;
+            background: white;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
         /* TABELA DE PRODUTOS */
         .products-table-container {
             background: white;
@@ -342,7 +353,7 @@
             font-weight: 700;
         }
 
-        /* MODAL DE PRODUTO (ADICIONAR E EDITAR) */
+        /* MODAL DE PRODUTO */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -495,13 +506,17 @@
                         <div class="order-card">
                             <div class="order-header">
                                 <span style="color: var(--muted);">#{{ loop.index }}</span>
-                                <span style="color: var(--warning); font-weight: 800;">Pendente</span>
+                                <select class="select-status" onchange="alterarStatusPedido('{{ p.id }}', this.value)">
+                                    <option value="Pendente" {% if p.status == 'Pendente' or not p.status %}selected{% endif %}>Pendente</option>
+                                    <option value="A Caminho" {% if p.status == 'A Caminho' %}selected{% endif %}>A Caminho</option>
+                                    <option value="Entregue" {% if p.status == 'Entregue' %}selected{% endif %}>Entregue</option>
+                                    <option value="Cancelado" {% if p.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                                </select>
                             </div>
                             <div class="order-client">{{ p.cliente }}</div>
                             <div class="order-address"><i class="fa-solid fa-location-dot"></i> {{ p.contacto }}</div>
                             
                             <div class="order-items">
-                                <!-- CONVERSÃO CORRETA DE STRING JSON PARA LISTA -->
                                 {% set itens_lista = p.itens if p.itens is iterable and p.itens is not string else (p.itens | fromjson if p.itens else []) %}
                                 
                                 {% for item in itens_lista %}
@@ -549,7 +564,6 @@
                 </button>
             </div>
 
-            <!-- Lista de Produtos com Opção de Editar e Eliminar -->
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 {% if produtos %}
                     {% for item in produtos %}
@@ -564,11 +578,9 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <!-- BOTÃO DE EDITAR -->
                             <button class="btn-edit" onclick='abrirModalEditar({{ item | tojson | safe }})'>
                                 <i class="fa-solid fa-pen-to-square"></i> Editar
                             </button>
-                            <!-- BOTÃO DA LIXEIRA -->
                             <form action="/admin/delete/{{ item.id }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este produto?');" style="margin: 0;">
                                 <button type="submit" class="btn-delete">
                                     <i class="fa-solid fa-trash"></i>
@@ -621,7 +633,6 @@
                 </div>
             </div>
 
-            <!-- OPÇÕES DE FOTO -->
             <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
                 <label><i class="fa-solid fa-cloud-arrow-up"></i> Carregar Foto Real (Cloudinary)</label>
                 <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
@@ -677,7 +688,6 @@
                 </div>
             </div>
 
-            <!-- OPÇÕES DE FOTO: EDITAR -->
             <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
                 <label><i class="fa-solid fa-cloud-arrow-up"></i> Substituir com Foto Real (Cloudinary)</label>
                 <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
@@ -714,7 +724,6 @@ function mudarAba(aba) {
     }
 }
 
-// Controle do Modal Adicionar
 function abrirModalAdd() {
     document.getElementById('modalAdd').style.display = 'flex';
 }
@@ -722,7 +731,6 @@ function fecharModalAdd() {
     document.getElementById('modalAdd').style.display = 'none';
 }
 
-// Controle do Modal Editar
 function abrirModalEditar(produto) {
     document.getElementById('formEdit').action = '/admin/edit/' + produto.id;
     
@@ -741,7 +749,7 @@ function fecharModalEdit() {
     document.getElementById('modalEdit').style.display = 'none';
 }
 
-// Cálculo Automático das Métricas ao Carregar a Página
+// Cálculo Automático do Total Faturado
 document.addEventListener('DOMContentLoaded', function() {
     let totalFaturado = 0;
     const elementosTotal = document.querySelectorAll('.val-total-pedido');
@@ -756,6 +764,24 @@ document.addEventListener('DOMContentLoaded', function() {
         elFaturado.innerText = totalFaturado.toLocaleString('pt-PT') + ' MT';
     }
 });
+
+// Alterar o Estado do Pedido via API
+function alterarStatusPedido(pedidoId, novoStatus) {
+    fetch(`/admin/pedido/status/${pedidoId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: novoStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log(`Estado do pedido ${pedidoId} atualizado para ${novoStatus}`);
+        } else {
+            alert('Ocorreu um erro ao atualizar o pedido.');
+        }
+    })
+    .catch(err => console.error('Erro na requisição:', err));
+}
 </script>
 
 </body>
