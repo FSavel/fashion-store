@@ -31,10 +31,10 @@ from utils.helpers import hora_mocambique
 
 
 # ======================================================
-# CONFIGURAÇÃO DA APP
+# CONFIGURAÇÃO DA APP (Com busca de templates na raiz e em templates/)
 # ======================================================
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -44,6 +44,10 @@ app.secret_key = os.environ.get(
 app.config.from_object(Config)
 
 logging.basicConfig(level=logging.INFO)
+
+
+# Configura o Jinja2 para procurar ficheiros tanto na raiz como na pasta templates/
+app.jinja_loader.searchpath.append(os.path.join(app.root_path, "templates"))
 
 
 # ======================================================
@@ -96,7 +100,7 @@ def clear_product_cache():
 def index():
     produtos = get_products()
     
-    # Extrai categorias dinamicamente para o filtro da loja
+    # Extrai categorias dinamicamente
     categorias = sorted(
         list(
             set(
@@ -190,6 +194,7 @@ def checkout():
 # ======================================================
 
 @app.route("/login", methods=["GET", "POST"])
+@app.route("/admin/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         user = request.form.get("username")
@@ -244,7 +249,7 @@ def health():
 
 
 # ======================================================
-# START
+# INICIALIZAÇÃO
 # ======================================================
 
 if __name__ == "__main__":
