@@ -125,7 +125,6 @@ def api_produtos():
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
     """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
-    # Suporta requisições com JSON (fetch) e Form Data (formulários tradicionais)
     data = request.get_json(silent=True) or request.form or {}
 
     cart = data.get("cart") or data.get("itens", [])
@@ -139,7 +138,6 @@ def checkout():
     
     contacto_completo = f"{contacto_tel} | End: {endereco} | Pag: {pagamento}"
 
-    # Garante serialização em string JSON
     cart_json = json.dumps(cart) if isinstance(cart, (list, dict)) else cart
 
     sucesso = add_order(
@@ -178,7 +176,6 @@ def admin_dashboard():
     produtos = load_catalog()
     pedidos = get_orders(Config.SHEET_ORDERS)
     
-    # Cálculo das métricas do painel
     total_vendas = 0.0
     pendentes_count = 0
     
@@ -203,7 +200,6 @@ def admin_dashboard():
         config=Config
     )
 
-# ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
 @app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
 @admin_required
 def api_atualizar_status_pedido(pedido_id):
@@ -221,7 +217,6 @@ def api_atualizar_status_pedido(pedido_id):
     else:
         return jsonify({"success": False, "message": "Erro ao atualizar na base de dados/planilha."}), 500
 
-# ROTA COMPATÍVEL COM FORMULÁRIOS TRADICIONAIS (POST FORM-DATA)
 @app.route("/admin/pedidos/status", methods=["POST"])
 @admin_required
 def admin_update_order_status():
