@@ -125,7 +125,8 @@ def api_produtos():
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
     """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
-    data = request.get_json(silent=True) or {}
+    # Suporta requisições com JSON (fetch) e Form Data (formulários tradicionais)
+    data = request.get_json(silent=True) or request.form or {}
 
     cart = data.get("cart") or data.get("itens", [])
     if not cart:
