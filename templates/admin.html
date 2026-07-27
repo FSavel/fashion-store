@@ -169,7 +169,7 @@
         /* MONITORES DE PEDIDOS (KANBAN) */
         .kanban-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
         }
 
@@ -208,6 +208,7 @@
         .order-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 8px;
             font-size: 12px;
             font-weight: 700;
@@ -274,6 +275,10 @@
             font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-action:active { opacity: 0.8; }
@@ -288,6 +293,7 @@
             background: white;
             color: var(--primary);
             cursor: pointer;
+            outline: none;
         }
 
         /* TABELA DE PRODUTOS */
@@ -353,7 +359,7 @@
             font-weight: 700;
         }
 
-        /* MODAL DE PRODUTO */
+        /* MODAIS */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -506,7 +512,7 @@
                         <div class="order-card">
                             <div class="order-header">
                                 <span style="color: var(--muted);">#{{ loop.index }}</span>
-                                <select class="select-status" onchange="alterarStatusPedido('{{ p.id }}', this.value)">
+                                <select class="select-status" data-current="{{ p.status or 'Pendente' }}" onchange="alterarStatusPedido('{{ p.id }}', this)">
                                     <option value="Pendente" {% if p.status == 'Pendente' or not p.status %}selected{% endif %}>Pendente</option>
                                     <option value="A Caminho" {% if p.status == 'A Caminho' %}selected{% endif %}>A Caminho</option>
                                     <option value="Entregue" {% if p.status == 'Entregue' %}selected{% endif %}>Entregue</option>
@@ -540,7 +546,10 @@
                             </div>
 
                             <div class="order-actions">
-                                <a href="https://wa.me/258{{ p.contacto }}?text=Olá%20{{ p.cliente }},%20recebemos%20o%20seu%20pedido!" target="_blank" class="btn-action btn-wsp">
+                                {# Sanitização do Número para o WhatsApp #}
+                                {% set num_limpo = p.contacto | replace(' ', '') | replace('-', '') | replace('+', '') %}
+                                {% set num_final = num_limpo if num_limpo.startswith('258') else '258' ~ num_limpo %}
+                                <a href="https://wa.me/{{ num_final }}?text=Ol%C3%A1%20{{ p.cliente | urlencode }},%20recebemos%20o%20seu%20pedido%20na%20Boutique%20Elegance!" target="_blank" class="btn-action btn-wsp">
                                     <i class="fa-brands fa-whatsapp"></i> Contactar
                                 </a>
                             </div>
@@ -599,7 +608,7 @@
 </div>
 
 <!-- MODAL: ADICIONAR PRODUTO -->
-<div class="modal-overlay" id="modalAdd">
+<div class="modal-overlay" id="modalAdd" onclick="fecharModalFora(event, 'modalAdd')">
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fa-solid fa-plus"></i> Novo Produto</h3>
@@ -618,7 +627,7 @@
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>Preço (MT) *</label>
-                    <input type="number" name="preco" class="form-control" placeholder="1500" required>
+                    <input type="number" step="0.01" name="preco" class="form-control" placeholder="1500" required>
                 </div>
             </div>
 
@@ -652,7 +661,7 @@
 </div>
 
 <!-- MODAL: EDITAR PRODUTO -->
-<div class="modal-overlay" id="modalEdit">
+<div class="modal-overlay" id="modalEdit" onclick="fecharModalFora(event, 'modalEdit')">
     <div class="modal-content">
         <div class="modal-header">
             <h3><i class="fa-solid fa-pen-to-square"></i> Editar Produto</h3>
@@ -673,7 +682,7 @@
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>Preço (MT) *</label>
-                    <input type="number" name="preco" id="edit_preco" class="form-control" required>
+                    <input type="number" step="0.01" name="preco" id="edit_preco" class="form-control" required>
                 </div>
             </div>
 
@@ -707,6 +716,7 @@
 </div>
 
 <script>
+// Troca de Abas
 function mudarAba(aba) {
     const btnPedidos = document.querySelectorAll('.tab-btn')[0];
     const btnProdutos = document.querySelectorAll('.tab-btn')[1];
@@ -724,6 +734,7 @@ function mudarAba(aba) {
     }
 }
 
+// Modais
 function abrirModalAdd() {
     document.getElementById('modalAdd').style.display = 'flex';
 }
@@ -749,6 +760,20 @@ function fecharModalEdit() {
     document.getElementById('modalEdit').style.display = 'none';
 }
 
+function fecharModalFora(event, modalId) {
+    if (event.target.id === modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+}
+
+// Fechar modais ao teclar 'ESC'
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        fecharModalAdd();
+        fecharModalEdit();
+    }
+});
+
 // Cálculo Automático do Total Faturado
 document.addEventListener('DOMContentLoaded', function() {
     let totalFaturado = 0;
@@ -761,26 +786,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const elFaturado = document.getElementById('total-faturado');
     if (elFaturado) {
-        elFaturado.innerText = totalFaturado.toLocaleString('pt-PT') + ' MT';
+        elFaturado.innerText = totalFaturado.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MT';
     }
 });
 
-// Alterar o Estado do Pedido via API
-function alterarStatusPedido(pedidoId, novoStatus) {
+// Alterar o Estado do Pedido via API (com fallback de erro)
+function alterarStatusPedido(pedidoId, selectElement) {
+    const novoStatus = selectElement.value;
+    const statusAnterior = selectElement.getAttribute('data-current');
+
     fetch(`/admin/pedido/status/${pedidoId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: novoStatus })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Falha no servidor');
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            console.log(`Estado do pedido ${pedidoId} atualizado para ${novoStatus}`);
+            selectElement.setAttribute('data-current', novoStatus);
+            console.log(`Estado do pedido ${pedidoId} alterado para ${novoStatus}`);
         } else {
-            alert('Ocorreu um erro ao atualizar o pedido.');
+            alert('Não foi possível atualizar o estado do pedido.');
+            selectElement.value = statusAnterior;
         }
     })
-    .catch(err => console.error('Erro na requisição:', err));
+    .catch(err => {
+        console.error('Erro na requisição:', err);
+        alert('Erro de conexão ao atualizar o estado.');
+        selectElement.value = statusAnterior;
+    });
 }
 </script>
 
