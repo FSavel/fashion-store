@@ -132,20 +132,20 @@ def checkout():
         return jsonify({"success": False, "error": "Carrinho vazio"}), 400
 
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
-    
-    # Corrige a recolha do contacto, endereço e pagamento
     contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
     endereco = data.get("endereco") or data.get("cliente_endereco", "N/A")
     pagamento = data.get("pagamento", "Não especificado")
     
     contacto_completo = f"{contacto_tel} | End: {endereco} | Pag: {pagamento}"
 
-    # Garante que o cart seja uma string JSON bem formatada ou lista pronta para salvar
+    # Garante serialização em string JSON
+    cart_json = json.dumps(cart) if isinstance(cart, (list, dict)) else cart
+
     sucesso = add_order(
         Config.SHEET_ORDERS,
         nome_cliente,
         contacto_completo,
-        cart,
+        cart_json,
         hora_mocambique(),
         status="Pendente"
     )
