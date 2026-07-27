@@ -310,8 +310,7 @@ function renderizarCarrinho() {
                     <span style="font-size: 13px; font-weight: 700;">${item.qtd}</span>
                     <button class="btn-qty" onclick="alterarQtd(${index}, 1)">+</button>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
 
     container.innerHTML = html;
@@ -333,111 +332,93 @@ function alternarBotoes(desativar) {
     document.getElementById('btn-direct').disabled = desativar;
 }
 
-function validarFormulario() {
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+// ======================================================
+// ENVIAR PEDIDO PARA O FLASK (/checkout) E LIGAR AO WHATSAPP/SMS
+// ======================================================
+async function processarEnvio(metodo) {
     const nome = document.getElementById('cliente-nome').value.trim();
     const telefone = document.getElementById('cliente-telefone').value.trim();
     const endereco = document.getElementById('cliente-endereco').value.trim();
+    const pagamento = document.getElementById('cliente-pagamento').value;
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+    // Validação básica dos campos
+    if (!nome || !telefone || !endereco) {
+        alert("Por favor, preencha todos os dados de entrega (Nome, Telefone e Endereço).");
+        return;
+    }
 
     if (cart.length === 0) {
-        alert("A sua sacola está vazia!");
-        return null;
-    }
-    if (!nome || !telefone || !endereco) {
-        alert("Por favor, preencha o seu Nome, Telefone e Endereço de entrega.");
-        return null;
+        alert("Sua sacola está vazia.");
+        return;
     }
 
-    return { 
-        cart, 
-        nome, 
-        telefone, 
-        endereco, 
-        pagamento: document.getElementById('cliente-pagamento').value 
-    };
-}
-
-async function guardarPedidoNoBackend(dados) {
-    try {
-        const response = await fetch('/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nome: dados.nome,
-                contacto: dados.telefone,
-                endereco: dados.endereco,
-                pagamento: dados.pagamento,
-                cart: dados.cart
-            })
-        });
-        return await response.json();
-    } catch (err) {
-        console.warn("Aviso ao comunicar com o servidor:", err);
-        return { success: false };
-    }
-}
-
-async function processarEnvio(canal) {
-    const dados = validarFormulario();
-    if (!dados) return;
-
+    // Desativa botões temporariamente para evitar envios duplicados
     alternarBotoes(true);
 
-    // 1. Grava no Backend / Google Sheets
-    await guardarPedidoNoBackend(dados);
-
-    // 2. Encaminha de acordo com o canal escolhido
-    if (canal === 'whatsapp') {
-        let mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n`;
-        mensagem += `*Cliente:* ${dados.nome}\n`;
-        mensagem += `*Contacto:* ${dados.telefone}\n`;
-        mensagem += `*Endereço:* ${dados.endereco}\n`;
-        mensagem += `*Pagamento:* ${dados.pagamento}\n\n`;
-        mensagem += `*ITENS DO PEDIDO:*\n`;
-
-        let total = 0;
-        dados.cart.forEach((item, i) => {
-            const sub = parseFloat(item.preco) * item.qtd;
-            total += sub;
-            const tamStr = item.tamanho ? item.tamanho : 'N/A';
-            const corStr = item.cor ? item.cor : 'N/A';
-            mensagem += `${i+1}. ${item.nome}\n   • Tam: ${tamStr} | Cor: ${corStr}\n   • Qtd: ${item.qtd} x ${item.preco} MT = *${sub.toFixed(2)} MT*\n\n`;
+    try {
+        // 1. ENVIAR OS DADOS DO PEDIDO PARA O BACKEND (FLASK / GOOGLE SHEETS)
+        const response = await fetch("/checkout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                nome: nome,
+                contacto: telefone,
+                endereco: endereco,
+                pagamento: pagamento,
+                cart: cart
+            })
         });
 
-        mensagem += `*TOTAL DO PEDIDO:* ${total.toFixed(2)} MT\n\n`;
-        mensagem += `_Aguardando confirmação de disponibilidade._`;
+        const resData = await response.json();
 
-        const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
-        localStorage.removeItem('cart');
-        window.location.href = url;
+        if (!response.ok || !resData.success) {
+            console.warn("Aviso: Falha ao gravar no backend:", resData.error);
+            alert("Atenção: Houve um problema ao registar o pedido no sistema, mas pode prosseguir pelo WhatsApp.");
+        }
 
-    } else if (canal === 'sms') {
-        let mensagem = `NOVO PEDIDO (SMS) - BOUTIQUE ELEGANCE\n\n`;
-        mensagem += `Cliente: ${dados.nome}\n`;
-        mensagem += `Contacto: ${dados.telefone}\n`;
-        mensagem += `Endereco: ${dados.endereco}\n`;
-        mensagem += `Pagamento: ${dados.pagamento}\n\n`;
-        mensagem += `ITENS:\n`;
+        // 2. MONTA A MENSAGEM DO PEDIDO
+        let resumoItens = "";
+        let totalGeral = 0;
 
-        let total = 0;
-        dados.cart.forEach((item, i) => {
-            const sub = parseFloat(item.preco) * item.qtd;
-            total += sub;
-            mensagem += `${i+1}. ${item.nome} (${item.tamanho||'N/A'}/${item.cor||'N/A'}) - ${item.qtd}x ${item.preco}MT = ${sub.toFixed(2)}MT\n`;
+        cart.forEach(item => {
+            const itemTotal = parseFloat(item.preco) * item.qtd;
+            totalGeral += itemTotal;
+            resumoItens += `• ${item.qtd}x ${item.nome} (${item.tamanho}/${item.cor}) - ${itemTotal.toFixed(2)} MT\n`;
         });
 
-        mensagem += `\nTOTAL: ${total.toFixed(2)} MT`;
+        const mensagem = `*NOVO PEDIDO - BOUTIQUE ELEGANCE*\n\n` +
+            `*Cliente:* ${nome}\n` +
+            `*Contacto:* ${telefone}\n` +
+            `*Endereço:* ${endereco}\n` +
+            `*Pagamento:* ${pagamento}\n\n` +
+            `*ITENS:* \n${resumoItens}\n` +
+            `*TOTAL:* ${totalGeral.toFixed(2)} MT`;
 
-        const separador = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
-        const urlSMS = `sms:${TELEFONE_BOUTIQUE}${separador}body=${encodeURIComponent(mensagem)}`;
-
+        // 3. LIMPA A SACOLA
         localStorage.removeItem('cart');
-        window.location.href = urlSMS;
+        renderizarCarrinho();
+        if (typeof atualizarBarraSacola === 'function') atualizarBarraSacola();
 
-    } else if (canal === 'direct') {
-        alert(`Obrigado, ${dados.nome}! O seu pedido foi registado com sucesso.\nA nossa equipa entrará em contacto para o número ${dados.telefone} para confirmar a entrega.`);
-        localStorage.removeItem('cart');
-        window.location.href = '/';
+        // 4. DIRECCIONA PARA O CANAL SELECIONADO
+        if (metodo === 'whatsapp') {
+            const url = `https://wa.me/${TELEFONE_BOUTIQUE}?text=${encodeURIComponent(mensagem)}`;
+            window.open(url, '_blank');
+        } else if (metodo === 'sms') {
+            const url = `sms:${TELEFONE_BOUTIQUE}?body=${encodeURIComponent(mensagem)}`;
+            window.location.href = url;
+        } else {
+            alert("Pedido enviado com sucesso! Entraremos em contacto em breve.");
+            window.location.href = "/";
+        }
+
+    } catch (err) {
+        console.error("Erro ao enviar pedido:", err);
+        alert("Ocorreu um erro ao ligar ao servidor. Tente novamente.");
+    } finally {
+        alternarBotoes(false);
     }
 }
 
