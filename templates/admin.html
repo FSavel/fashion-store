@@ -12,7 +12,7 @@
     <style>
         :root {
             --primary: #0f172a;
-            --accent: #25d366; /* Verde Destaque */
+            --accent: #25d366;
             --bg: #f8fafc;
             --surface: #ffffff;
             --text: #0f172a;
@@ -32,7 +32,6 @@
             padding-bottom: 40px;
         }
 
-        /* HEADER DO ADMIN */
         header {
             background: var(--primary);
             color: white;
@@ -85,10 +84,7 @@
             padding: 0 16px;
         }
 
-        /* MENSAGENS FLASH */
-        .alert-container {
-            margin-bottom: 16px;
-        }
+        .alert-container { margin-bottom: 16px; }
         .alert {
             padding: 12px 16px;
             border-radius: 10px;
@@ -100,7 +96,6 @@
         .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
         .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-        /* METRICAS DO DIA */
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -141,7 +136,6 @@
             color: var(--primary);
         }
 
-        /* NAVEGAÇÃO ENTRE ABAS DA GESTÃO */
         .tab-nav {
             display: flex;
             gap: 10px;
@@ -166,10 +160,9 @@
             border-bottom-color: var(--primary);
         }
 
-        /* MONITORES DE PEDIDOS (KANBAN) */
         .kanban-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
         }
 
@@ -208,8 +201,9 @@
         .order-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
             font-weight: 700;
         }
 
@@ -267,17 +261,21 @@
 
         .btn-action {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             border: none;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
-            transition: opacity 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
-        .btn-action:active { opacity: 0.8; }
-        .btn-wsp { background: #25d366; color: white; text-align: center; text-decoration: none; }
+        .btn-wsp { background: #25d366; color: white; }
 
         .select-status {
             padding: 6px 10px;
@@ -288,9 +286,9 @@
             background: white;
             color: var(--primary);
             cursor: pointer;
+            outline: none;
         }
 
-        /* TABELA DE PRODUTOS */
         .products-table-container {
             background: white;
             border-radius: 16px;
@@ -310,10 +308,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            transition: background 0.2s;
         }
-
-        .btn-add-product:hover { background: #1e293b; }
 
         .product-item-row {
             display: flex;
@@ -333,27 +328,9 @@
             background: #f1f5f9;
         }
 
-        .btn-edit {
-            background: #e0f2fe;
-            color: #0284c7;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-        }
+        .btn-edit { background: #e0f2fe; color: #0284c7; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+        .btn-delete { background: #fee2e2; color: #ef4444; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; }
 
-        .btn-delete {
-            background: #fee2e2;
-            color: #ef4444;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        /* MODAL DE PRODUTO */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -385,50 +362,13 @@
         }
 
         .modal-header h3 { font-size: 18px; font-weight: 800; }
+        .close-modal { background: none; border: none; font-size: 20px; color: var(--muted); cursor: pointer; }
 
-        .close-modal {
-            background: none; border: none;
-            font-size: 20px; color: var(--muted);
-            cursor: pointer;
-        }
-
-        .form-group {
-            margin-bottom: 14px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 6px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 13px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 12px;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 800;
-            cursor: pointer;
-            margin-top: 10px;
-        }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 13px; }
+        .form-row { display: flex; gap: 12px; }
+        .btn-submit { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -442,7 +382,6 @@
 
 <div class="container">
 
-    <!-- ALERTAS FLASH -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="alert-container">
@@ -453,7 +392,6 @@
       {% endif %}
     {% endwith %}
 
-    <!-- METRICAS DO DIA -->
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-icon" style="background: #e0f2fe; color: #0284c7;">
@@ -486,13 +424,12 @@
         </div>
     </div>
 
-    <!-- ABAS -->
     <div class="tab-nav">
         <button class="tab-btn active" onclick="mudarAba('pedidos')"><i class="fa-solid fa-list-check"></i> Monitor de Pedidos</button>
         <button class="tab-btn" onclick="mudarAba('produtos')"><i class="fa-solid fa-boxes-stacked"></i> Gerir Produtos</button>
     </div>
 
-    <!-- ABA 1: MONITOR DE PEDIDOS (KANBAN) -->
+    <!-- ABA 1: MONITOR DE PEDIDOS -->
     <div id="section-pedidos">
         <div class="kanban-grid">
             <div class="kanban-column">
@@ -513,34 +450,43 @@
                                     <option value="Cancelado" {% if p.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
                                 </select>
                             </div>
-                            <div class="order-client">{{ p.cliente }}</div>
-                            <div class="order-address"><i class="fa-solid fa-location-dot"></i> {{ p.contacto }}</div>
+
+                            <div class="order-client">{{ p.cliente or 'Cliente Sem Nome' }}</div>
+                            <div class="order-address">
+                                <i class="fa-solid fa-phone"></i> {{ p.contacto }} 
+                                {% if p.endereco %}| <i class="fa-solid fa-location-dot"></i> {{ p.endereco }}{% endif %}
+                                {% if p.pagamento %}| <i class="fa-solid fa-wallet"></i> {{ p.pagamento }}{% endif %}
+                            </div>
                             
                             <div class="order-items">
-                                {% set itens_lista = p.itens if p.itens is iterable and p.itens is not string else (p.itens | fromjson if p.itens else []) %}
-                                
-                                {% for item in itens_lista %}
-                                <div class="order-item-line">
-                                    <span>
-                                        <strong>{{ item.qtd }}x</strong> {{ item.nome }} 
-                                        <small style="color: var(--muted);">({{ item.tamanho or 'Padrão' }}{% if item.cor %}, {{ item.cor }}{% endif %})</small>
-                                    </span>
-                                    <b>{{ item.preco }} MT</b>
-                                </div>
+                                {% if p.itens %}
+                                    {% for item in p.itens %}
+                                    <div class="order-item-line">
+                                        <span>
+                                            <strong>{{ item.qtd or 1 }}x</strong> {{ item.nome or item.titulo or 'Produto' }}
+                                            {% if item.tamanho or item.cor %}
+                                                <small style="color: var(--muted);">({{ item.tamanho or '' }}{% if item.tamanho and item.cor %}, {% endif %}{{ item.cor or '' }})</small>
+                                            {% endif %}
+                                        </span>
+                                        <b>{{ item.preco }} MT</b>
+                                    </div>
+                                    {% endfor %}
                                 {% else %}
-                                <div class="order-item-line">
-                                    <span>Sem detalhes de itens</span>
-                                </div>
-                                {% endfor %}
+                                    <div class="order-item-line">
+                                        <span>Sem detalhes de itens</span>
+                                    </div>
+                                {% endif %}
 
                                 <div class="order-total">
                                     <span>Total:</span>
-                                    <span class="val-total-pedido" data-value="{{ p.total if p.total else 0 }}">{{ p.total if p.total else '---' }} MT</span>
+                                    <span class="val-total-pedido" data-value="{{ p.total if p.total else 0 }}">
+                                        {{ p.total }} {% if 'MT' not in (p.total|string) %}MT{% endif %}
+                                    </span>
                                 </div>
                             </div>
 
                             <div class="order-actions">
-                                <a href="https://wa.me/258{{ p.contacto }}?text=Olá%20{{ p.cliente }},%20recebemos%20o%20seu%20pedido!" target="_blank" class="btn-action btn-wsp">
+                                <a href="https://wa.me/258{{ p.contacto }}?text=Olá,%20falamos%20da%20Boutique%20Elegance%20sobre%20o%20seu%20pedido!" target="_blank" class="btn-action btn-wsp">
                                     <i class="fa-brands fa-whatsapp"></i> Contactar
                                 </a>
                             </div>
@@ -598,7 +544,7 @@
 
 </div>
 
-<!-- MODAL: ADICIONAR PRODUTO -->
+<!-- MODAL ADD -->
 <div class="modal-overlay" id="modalAdd">
     <div class="modal-content">
         <div class="modal-header">
@@ -634,10 +580,10 @@
             </div>
 
             <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
-                <label><i class="fa-solid fa-cloud-arrow-up"></i> Carregar Foto Real (Cloudinary)</label>
+                <label><i class="fa-solid fa-cloud-arrow-up"></i> Foto Real (Cloudinary)</label>
                 <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
                 
-                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou colar Link de Imagem</label>
+                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou Link da Imagem</label>
                 <input type="url" name="fotos" class="form-control" placeholder="https://exemplo.com/imagem.jpg">
             </div>
 
@@ -651,7 +597,7 @@
     </div>
 </div>
 
-<!-- MODAL: EDITAR PRODUTO -->
+<!-- MODAL EDIT -->
 <div class="modal-overlay" id="modalEdit">
     <div class="modal-content">
         <div class="modal-header">
@@ -689,10 +635,10 @@
             </div>
 
             <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px dashed var(--border);">
-                <label><i class="fa-solid fa-cloud-arrow-up"></i> Substituir com Foto Real (Cloudinary)</label>
+                <label><i class="fa-solid fa-cloud-arrow-up"></i> Substituir Foto Real</label>
                 <input type="file" name="foto_file" class="form-control" accept="image/*" style="margin-bottom: 8px;">
                 
-                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou alterar Link de Imagem</label>
+                <label style="margin-top: 6px;"><i class="fa-solid fa-link"></i> Ou Alterar Link</label>
                 <input type="url" name="fotos" id="edit_fotos" class="form-control">
             </div>
 
@@ -724,16 +670,11 @@ function mudarAba(aba) {
     }
 }
 
-function abrirModalAdd() {
-    document.getElementById('modalAdd').style.display = 'flex';
-}
-function fecharModalAdd() {
-    document.getElementById('modalAdd').style.display = 'none';
-}
+function abrirModalAdd() { document.getElementById('modalAdd').style.display = 'flex'; }
+function fecharModalAdd() { document.getElementById('modalAdd').style.display = 'none'; }
 
 function abrirModalEditar(produto) {
     document.getElementById('formEdit').action = '/admin/edit/' + produto.id;
-    
     document.getElementById('edit_nome').value = produto.nome || '';
     document.getElementById('edit_categoria').value = produto.categoria || '';
     document.getElementById('edit_preco').value = produto.preco || '';
@@ -742,21 +683,19 @@ function abrirModalEditar(produto) {
     document.getElementById('edit_fotos').value = produto.fotos || '';
     document.getElementById('edit_foto_antiga').value = produto.fotos || '';
     document.getElementById('edit_descricao').value = produto.descricao || '';
-
     document.getElementById('modalEdit').style.display = 'flex';
 }
-function fecharModalEdit() {
-    document.getElementById('modalEdit').style.display = 'none';
-}
+function fecharModalEdit() { document.getElementById('modalEdit').style.display = 'none'; }
 
-// Cálculo Automático do Total Faturado
+// Cálculo do Total Faturado
 document.addEventListener('DOMContentLoaded', function() {
     let totalFaturado = 0;
     const elementosTotal = document.querySelectorAll('.val-total-pedido');
 
     elementosTotal.forEach(el => {
-        const val = parseFloat(el.getAttribute('data-value')) || 0;
-        totalFaturado += val;
+        let valRaw = el.getAttribute('data-value') || '0';
+        let valClean = parseFloat(valRaw.replace(/[^0-9.-]+/g, "")) || 0;
+        totalFaturado += valClean;
     });
 
     const elFaturado = document.getElementById('total-faturado');
@@ -765,7 +704,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Alterar o Estado do Pedido via API
 function alterarStatusPedido(pedidoId, novoStatus) {
     fetch(`/admin/pedido/status/${pedidoId}`, {
         method: 'POST',
@@ -774,13 +712,11 @@ function alterarStatusPedido(pedidoId, novoStatus) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            console.log(`Estado do pedido ${pedidoId} atualizado para ${novoStatus}`);
-        } else {
-            alert('Ocorreu um erro ao atualizar o pedido.');
+        if (!data.success) {
+            alert('Erro ao atualizar estado do pedido.');
         }
     })
-    .catch(err => console.error('Erro na requisição:', err));
+    .catch(err => console.error('Erro na chamada:', err));
 }
 </script>
 
