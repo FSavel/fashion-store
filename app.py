@@ -1,62 +1,43 @@
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
+from functools import wraps
 import os
+import time
 import json
 import logging
-from functools import wraps
-
-from flask import (
-    Flask,
-    render_template,
-    request,
-    jsonify,
-    redirect,
-    url_for,
-    session
-)
+import cloudinary
+import cloudinary.uploader
 
 from config import Config
-
+from utils.helpers import hora_mocambique
 from services.catalog_service import (
-    load_catalog,
-    add_order,
-    get_orders,
-    add_product,
+    load_catalog, 
+    add_order, 
+    get_orders, 
+    add_product, 
+    delete_product, 
     update_product,
-    delete_product,
     update_order_status
 )
 
-from utils.helpers import hora_mocambique
-
-
 # ======================================================
-# CONFIGURAÇÃO DA APP (Caminho absoluto para templates)
+# CONFIGURAÇÃO DA APP (CAMINHO ABSOLUTO PARA O RENDER)
 # ======================================================
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 app = Flask(
     __name__,
-    template_folder=TEMPLATES_DIR,
+    template_folder=os.path.join(BASE_DIR, "templates"),
     static_folder=os.path.join(BASE_DIR, "static")
 )
 
-app.secret_key = os.environ.get(
-    "SECRET_KEY",
-    "boutique-elegance-secret-key-2026"
-)
-
-app.config.from_object(Config)
-
-logging.basicConfig(level=logging.INFO)
-
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "loja_moda_secret_key_2026")
 
 # ======================================================
-# FILTRO JSON PARA TEMPLATES
+# FILTRO JINJA2 PERSONALIZADO (PARSE DE JSON NO TEMPLATE)
 # ======================================================
-
-@app.template_filter("fromjson")
+@app.template_filter('fromjson')
 def fromjson_filter(value):
+    """Converte strings JSON armazenadas na base de dados/planilha em listas/dicionários Python."""
     if not value:
         return []
     if isinstance(value, (list, dict)):
@@ -66,50 +47,72 @@ def fromjson_filter(value):
     except Exception:
         return []
 
-
 # ======================================================
-# PROTEÇÃO ADMIN & CACHE
+# CONFIGURAÇÃO DO CLOUDINARY (UPLOADS DE IMAGENS)
 # ======================================================
+CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL")
+if CLOUDINARY_URL:
+    os.environ["CLOUDINARY_URL"] = CLOUDINARY_URL
+    cloudinary.config(secure=True)
 
-def admin_required(func):
-    @wraps(func)
+# Decorator para Proteger Rotas Admin
+def admin_required(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
         if not session.get("admin_logged_in"):
-            return redirect(url_for("login"))
-        return func(*args, **kwargs)
+            return redirect(url_for("admin_login"))
+        return f(*args, **kwargs)
     return wrapper
 
-
+# ======================================================
+# CACHE INTELIGENTE DE PRODUTOS
+# ======================================================
 CACHE_PRODUTOS = None
+ULTIMA_ATUALIZACAO = 0
+TEMPO_CACHE = 20  # Segundos
 
-def get_products():
-    global CACHE_PRODUTOS
-    if CACHE_PRODUTOS is None:
+def get_cached_catalog():
+    global CACHE_PRODUTOS, ULTIMA_ATUALIZACAO
+    agora = time.time()
+
+    if CACHE_PRODUTOS is None or (agora - ULTIMA_ATUALIZACAO) > TEMPO_CACHE:
         CACHE_PRODUTOS = load_catalog()
+        ULTIMA_ATUALIZACAO = agora
+
     return CACHE_PRODUTOS
 
-def clear_product_cache():
+def invalidate_catalog_cache():
+    """Força a limpeza da memória cache ao modificar o catálogo."""
     global CACHE_PRODUTOS
     CACHE_PRODUTOS = None
 
+# ======================================================
+# ROTAS PWA (SERVICE WORKER, MANIFEST E ÍCONES)
+# Ajustadas para a tua pasta static/
+# ======================================================
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "sw.js", mimetype="application/javascript")
+
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "manifest.json", mimetype="application/json")
+
+@app.route("/static/icons/<path:filename>")
+def serve_icons(filename):
+    try:
+        return send_from_directory(os.path.join(BASE_DIR, "static", "icons"), filename)
+    except Exception:
+        return "", 204
 
 # ======================================================
-# ROTAS DA LOJA
+# ROTAS DA LOJA (CATÁLOGO E SACOLA)
 # ======================================================
-
 @app.route("/")
 def index():
-    produtos = get_products()
+    produtos = get_cached_catalog()
+    categorias = sorted(list(set(p.get("categoria", "Geral") for p in produtos if p.get("categoria"))))
     
-    categorias = sorted(
-        list(
-            set(
-                p.get("categoria", "Geral")
-                for p in produtos if isinstance(p, dict)
-            )
-        )
-    )
-
     return render_template(
         "loja.html",
         produtos=produtos,
@@ -117,198 +120,251 @@ def index():
         config=Config
     )
 
-
 @app.route("/cart")
-@app.route("/carrinho")
 def cart():
-    return render_template(
-        "cart.html",
-        config=Config
-    )
-
+    """Rota para visualizar a Sacola de Compras."""
+    return render_template("cart.html", config=Config)
 
 @app.route("/api/produtos")
 def api_produtos():
-    return jsonify({
-        "produtos": get_products()
-    })
-
+    return jsonify({"produtos": get_cached_catalog()})
 
 # ======================================================
-# CHECKOUT / PROCESSAMENTO DE PEDIDOS
+# CHECKOUT / REGISTAR PEDIDO
 # ======================================================
-
 @app.route("/checkout", methods=["POST"])
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
+    """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
     data = request.get_json(silent=True) or {}
 
-    cart_items = (
-        data.get("cart")
-        or data.get("itens")
-        or []
+    cart = data.get("cart") or data.get("itens", [])
+    if not cart:
+        return jsonify({"success": False, "error": "Carrinho vazio"}), 400
+
+    nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
+    
+    contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
+    endereco = data.get("endereco") or data.get("cliente_endereco", "N/A")
+    pagamento = data.get("pagamento", "Não especificado")
+    
+    contacto_completo = f"{contacto_tel} | End: {endereco} | Pag: {pagamento}"
+
+    sucesso = add_order(
+        getattr(Config, 'SHEET_ORDERS', 'Pedidos'),
+        nome_cliente,
+        contacto_completo,
+        cart,
+        hora_mocambique(),
+        status="Pendente"
     )
 
-    if not cart_items:
-        return jsonify({
-            "success": False,
-            "error": "Carrinho vazio"
-        }), 400
-
-    nome = data.get("nome") or "Cliente"
-    telefone = data.get("contacto") or data.get("telefone") or "N/A"
-    endereco = data.get("endereco") or "N/A"
-    pagamento = data.get("pagamento") or "Não especificado"
-
-    contacto_completo = f"{telefone} | End: {endereco} | Pag: {pagamento}"
-
-    try:
-        resultado = add_order(
-            getattr(Config, "SHEET_ORDERS", "Pedidos"),
-            nome,
-            contacto_completo,
-            cart_items,
-            hora_mocambique(),
-            status="Pendente"
-        )
-
-        return jsonify({
-            "success": resultado
-        })
-
-    except Exception as e:
-        logging.exception("Erro ao processar checkout")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
+    return jsonify({"success": sucesso})
 
 # ======================================================
-# AUTENTICAÇÃO E PAINEL ADMIN
+# ROTAS DE ADMINISTRAÇÃO (GESTÃO DA BOUTIQUE)
 # ======================================================
-
-@app.route("/login", methods=["GET", "POST"])
 @app.route("/admin/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        user = request.form.get("username")
-        pwd = request.form.get("password")
+def admin_login():
+    if request.method == "GET":
+        # Aponta para templates/admin/login.html
+        return render_template("admin/login.html")
 
-        admin_user = getattr(Config, "ADMIN_USERNAME", "admin")
-        admin_pass = getattr(Config, "ADMIN_PASSWORD", "admin123")
+    username = request.form.get("username")
+    password = request.form.get("password")
 
-        if user == admin_user and pwd == admin_pass:
-            session["admin_logged_in"] = True
-            return redirect(url_for("admin"))
+    if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+        session["admin_logged_in"] = True
+        return redirect(url_for("admin_dashboard"))
 
-        return render_template("login.html", error="Credenciais inválidas")
-
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    session.pop("admin_logged_in", None)
-    return redirect(url_for("login"))
-
+    flash("Credenciais inválidas!", "danger")
+    return redirect(url_for("admin_login"))
 
 @app.route("/admin")
 @admin_required
-def admin():
-    try:
-        pedidos = get_orders(getattr(Config, "SHEET_ORDERS", "Pedidos"))
-        if isinstance(pedidos, list):
-            pedidos.reverse()
-    except Exception as e:
-        logging.error(f"Erro ao carregar painel Admin: {e}")
-        pedidos = []
+def admin_dashboard():
+    """Exibe o painel de gestão com a lista de produtos, pedidos e métricas."""
+    produtos = load_catalog()
+    
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    pedidos = get_orders(sheet_name)
+    
+    # Cálculo das métricas do painel
+    total_vendas = 0.0
+    pendentes_count = 0
+    
+    for p in pedidos:
+        st = str(p.get("status", "")).lower()
+        if st in ["pendente", "novo", ""]:
+            pendentes_count += 1
+            
+        if st != "cancelado":
+            total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
+            try:
+                total_vendas += float(total_str)
+            except ValueError:
+                pass
 
+    # Aponta para templates/admin.html (está diretamente em templates/)
     return render_template(
-        "admin.html",
+        "admin.html", 
+        produtos=produtos, 
         pedidos=pedidos,
+        total_vendas=f"{total_vendas:.2f}",
+        pendentes_count=pendentes_count,
         config=Config
     )
 
+# ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
+@app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
+@admin_required
+def api_atualizar_status_pedido(pedido_id):
+    """Processa a alteração de estado vinda da requisição fetch (JSON) no admin.html."""
+    dados = request.get_json(silent=True) or {}
+    novo_status = dados.get("status")
+
+    status_validos = ["Pendente", "A Caminho", "Entregue", "Cancelado"]
+    if not novo_status or novo_status not in status_validos:
+        return jsonify({"success": False, "message": "Estado inválido."}), 400
+
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    sucesso = update_order_status(sheet_name, pedido_id, novo_status)
+    if sucesso:
+        return jsonify({"success": True, "message": "Estado atualizado com sucesso!"})
+    else:
+        return jsonify({"success": False, "message": "Erro ao atualizar na base de dados/planilha."}), 500
+
+# ROTA COMPATÍVEL COM FORMULÁRIOS TRADICIONAIS (POST FORM-DATA)
+@app.route("/admin/pedidos/status", methods=["POST"])
+@admin_required
+def admin_update_order_status():
+    """Atualiza o estado de um pedido via submit tradicional de formulário."""
+    pedido_id = request.form.get("pedido_id")
+    novo_status = request.form.get("status")
+
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    if pedido_id and novo_status:
+        if update_order_status(sheet_name, pedido_id, novo_status):
+            flash(f"Estado do pedido #{pedido_id} alterado para '{novo_status}'!", "success")
+        else:
+            flash("Erro ao atualizar o estado do pedido.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
+
+def processar_imagem_produto(request_obj):
+    """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
+    if "foto_file" in request_obj.files and request_obj.files["foto_file"].filename != "":
+        ficheiro = request_obj.files["foto_file"]
+        try:
+            resultado = cloudinary.uploader.upload(ficheiro, folder="boutique_elegance")
+            return resultado.get("secure_url")
+        except Exception as e:
+            logging.error(f"Erro no upload do Cloudinary: {e}")
+            return None
+    
+    return request_obj.form.get("fotos", "")
+
+@app.route("/admin/add", methods=["POST"])
+@admin_required
+def admin_add_product():
+    """Recebe o formulário de cadastro do produto."""
+    foto_url = processar_imagem_produto(request)
+
+    try:
+        stock_val = int(request.form.get("stock", 1))
+    except (ValueError, TypeError):
+        stock_val = 1
+
+    novo_produto = {
+        "nome": request.form.get("nome"),
+        "categoria": request.form.get("categoria"),
+        "preco": request.form.get("preco"),
+        "tamanhos": request.form.get("tamanhos"),
+        "cores": request.form.get("cores"),
+        "stock": stock_val,
+        "fotos": foto_url or "",
+        "descricao": request.form.get("descricao")
+    }
+
+    if add_product(novo_produto):
+        invalidate_catalog_cache()
+        flash("Produto adicionado com sucesso!", "success")
+    else:
+        flash("Erro ao adicionar produto.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/edit/<produto_id>", methods=["POST"])
+@admin_required
+def admin_edit_product(produto_id):
+    """Edita um produto existente, incluindo a atualização do stock."""
+    foto_url = processar_imagem_produto(request)
+    
+    if not foto_url:
+        foto_url = request.form.get("foto_antiga", "")
+
+    try:
+        stock_val = int(request.form.get("stock", 1))
+    except (ValueError, TypeError):
+        stock_val = 1
+
+    produto_atualizado = {
+        "id": produto_id,
+        "nome": request.form.get("nome"),
+        "categoria": request.form.get("categoria"),
+        "preco": request.form.get("preco"),
+        "tamanhos": request.form.get("tamanhos"),
+        "cores": request.form.get("cores"),
+        "stock": stock_val,
+        "fotos": foto_url,
+        "descricao": request.form.get("descricao")
+    }
+
+    if update_product(produto_id, produto_atualizado):
+        invalidate_catalog_cache()
+        flash("Produto atualizado com sucesso!", "success")
+    else:
+        flash("Erro ao atualizar produto.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/delete/<produto_id>", methods=["POST"])
+@admin_required
+def admin_delete_product(produto_id):
+    """Elimina um produto do catálogo."""
+    if delete_product(produto_id):
+        invalidate_catalog_cache()
+        flash("Produto removido com sucesso!", "warning")
+    else:
+        flash("Erro ao remover produto.", "danger")
+
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/pedidos")
+@admin_required
+def admin_pedidos():
+    """Exibe a lista e o estado dos pedidos efetuados."""
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    pedidos = get_orders(sheet_name)
+    # Aponta para templates/admin/pedidos.html
+    return render_template("admin/pedidos.html", pedidos=pedidos, config=Config)
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("admin_logged_in", None)
+    return redirect(url_for("admin_login"))
 
 # ======================================================
-# ENDPOINTS DA API ADMIN (Gestão de Produtos e Pedidos)
+# SOBRE & HEALTH
 # ======================================================
-
-@app.route("/api/produtos/novo", methods=["POST"])
-@admin_required
-def api_add_product():
-    try:
-        data = request.get_json(silent=True) or {}
-        res = add_product(data)
-        clear_product_cache()
-        return jsonify({"success": res})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/produtos/atualizar", methods=["POST"])
-@admin_required
-def api_update_product():
-    try:
-        data = request.get_json(silent=True) or {}
-        row_index = data.get("row_index")
-        res = update_product(row_index, data)
-        clear_product_cache()
-        return jsonify({"success": res})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/produtos/eliminar", methods=["POST"])
-@admin_required
-def api_delete_product():
-    try:
-        data = request.get_json(silent=True) or {}
-        row_index = data.get("row_index")
-        res = delete_product(row_index)
-        clear_product_cache()
-        return jsonify({"success": res})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/pedidos/status", methods=["POST"])
-@admin_required
-def api_update_order_status():
-    try:
-        data = request.get_json(silent=True) or {}
-        row_index = data.get("row_index")
-        new_status = data.get("status")
-        res = update_order_status(
-            getattr(Config, "SHEET_ORDERS", "Pedidos"),
-            row_index,
-            new_status
-        )
-        return jsonify({"success": res})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-# ======================================================
-# HEALTH CHECK
-# ======================================================
+@app.route("/sobre")
+def sobre():
+    return render_template("sobre.html")
 
 @app.route("/health")
 def health():
-    return jsonify({
-        "status": "online",
-        "app": "Boutique Elegance"
-    })
-
-
-# ======================================================
-# INICIALIZAÇÃO
-# ======================================================
+    return {"status": "ok", "system": "loja-moda-app"}
 
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
-        debug=True
-    )
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
