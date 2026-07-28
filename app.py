@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import traceback
 from functools import wraps
 
 from flask import (
@@ -11,8 +10,7 @@ from flask import (
     jsonify,
     redirect,
     url_for,
-    session,
-    flash
+    session
 )
 
 from config import Config
@@ -31,10 +29,17 @@ from utils.helpers import hora_mocambique
 
 
 # ======================================================
-# CONFIGURAÇÃO DA APP (Com busca de templates na raiz e em templates/)
+# CONFIGURAÇÃO DA APP (Caminho absoluto para templates)
 # ======================================================
 
-app = Flask(__name__, template_folder=".")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+app = Flask(
+    __name__,
+    template_folder=TEMPLATES_DIR,
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -44,10 +49,6 @@ app.secret_key = os.environ.get(
 app.config.from_object(Config)
 
 logging.basicConfig(level=logging.INFO)
-
-
-# Configura o Jinja2 para procurar ficheiros tanto na raiz como na pasta templates/
-app.jinja_loader.searchpath.append(os.path.join(app.root_path, "templates"))
 
 
 # ======================================================
@@ -100,7 +101,6 @@ def clear_product_cache():
 def index():
     produtos = get_products()
     
-    # Extrai categorias dinamicamente
     categorias = sorted(
         list(
             set(
@@ -141,10 +141,7 @@ def api_produtos():
 @app.route("/checkout", methods=["POST"])
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
-    print("\n========== NOVO CHECKOUT ==========")
-
     data = request.get_json(silent=True) or {}
-    print(json.dumps(data, indent=2, ensure_ascii=False))
 
     cart_items = (
         data.get("cart")
@@ -174,8 +171,6 @@ def checkout():
             hora_mocambique(),
             status="Pendente"
         )
-
-        print("Resultado add_order:", resultado)
 
         return jsonify({
             "success": resultado
@@ -234,6 +229,65 @@ def admin():
         pedidos=pedidos,
         config=Config
     )
+
+
+# ======================================================
+# ENDPOINTS DA API ADMIN (Gestão de Produtos e Pedidos)
+# ======================================================
+
+@app.route("/api/produtos/novo", methods=["POST"])
+@admin_required
+def api_add_product():
+    try:
+        data = request.get_json(silent=True) or {}
+        res = add_product(data)
+        clear_product_cache()
+        return jsonify({"success": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/produtos/atualizar", methods=["POST"])
+@admin_required
+def api_update_product():
+    try:
+        data = request.get_json(silent=True) or {}
+        row_index = data.get("row_index")
+        res = update_product(row_index, data)
+        clear_product_cache()
+        return jsonify({"success": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/produtos/eliminar", methods=["POST"])
+@admin_required
+def api_delete_product():
+    try:
+        data = request.get_json(silent=True) or {}
+        row_index = data.get("row_index")
+        res = delete_product(row_index)
+        clear_product_cache()
+        return jsonify({"success": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/pedidos/status", methods=["POST"])
+@admin_required
+def api_update_order_status():
+    try:
+        data = request.get_json(silent=True) or {}
+        row_index = data.get("row_index")
+        new_status = data.get("status")
+        res = update_order_status(
+            getattr(Config, "SHEET_ORDERS", "Pedidos"),
+            row_index,
+            new_status
+        )
+        return jsonify({"success": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ======================================================
