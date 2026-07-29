@@ -1,212 +1,358 @@
 import os
 import json
+import uuid
 import logging
-from services.google_service import get_sheet, sheet_to_dict
+import gspread
+from datetime import datetime
+from typing import List, Dict, Optional
+from google.oauth2.service_account import Credentials
 
-def load_catalog():
-    """Carrega todos os produtos da aba Produtos."""
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+logging.basicConfig(level=logging.INFO)
+
+def get_google_client():
+    creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if not creds: return None
     try:
-        sheet = get_sheet("Produtos")
-        data = sheet_to_dict(sheet)
-        produtos = []
-        for r in data:
-            if not r.get("Nome"):
-                continue
+        cred = Credentials.from_service_account_info(json.loads(creds), scopes=SCOPES)
+        return gspread.authorize(cred)
+    except Exception as e:
+        logging.exception(f"Erro Google Client: {e}")
+        return None
+
+def get_spreadsheet():
+    client = get_google_client()
+    sheet_id = os.environ.get("GOOGLE_SHEETS_ID")
+    if not client or not sheet_id: return None
+    try:
+        return client.open_by_key(sheet_id)
+    except Exception as e:
+        logging.exception(f"Erro Spreadsheet: {e}")
+        return None
+
+def get_sheet(sheet_name):
+    book = get_spreadsheet()
+    if not book: return None
+    try:
+        return book.worksheet(sheet_name)
+    except Exception as e:
+        logging.exception(f"Erro folha {sheet_name}: {e}")
+        return None
+
+def sheet_to_dict(sheet):
+    if sheet is None: return []
+    try:
+        return sheet.get_all_records()
+    except Exception as e:
+        logging.exception(f"Erro leitura: {e}")
+        return []
+
+# ==========================================================
+# CATÁLOGO
+# ==========================================================
+
+def load_catalog() -> List[Dict]:
+    sheet = get_sheet("Produtos")
+    if not sheet: return []
+    produtos = []
+    try:
+        for r in sheet_to_dict(sheet):
+            disp = str(r.get("Disponivel") or r.get("disponivel") or "SIM").strip().upper()
+            if disp not in ["SIM", "TRUE", "1", "VERDADEIRO", "YES"]: continue
             produtos.append({
-                "id": str(r.get("ID", "")),
-                "nome": r.get("Nome", ""),
-                "categoria": r.get("Categoria", "Geral"),
-                "preco": r.get("Preco", "0"),
-                "tamanhos": r.get("Tamanhos", ""),
-                "cores": r.get("Cores", ""),
-                "stock": r.get("Stock", 1),
-                "fotos": r.get("Fotos", ""),
-                "descricao": r.get("Descricao", "")
+                "id": str(r.get("ID") or r.get("id") or uuid.uuid4()),
+                "categoria": r.get("Categoria") or r.get("categoria") or "Geral",
+                "nome": r.get("Nome") or r.get("nome") or "",
+                "descricao": r.get("Descricao") or r.get("descricao") or "",
+                "preco": str(r.get("Preco") or r.get("preco") or "0"),
+                "fotos": r.get("Fotos") or r.get("fotos") or "",
+                "tamanhos": r.get("Tamanhos") or r.get("tamanhos") or "",
+                "cores": r.get("Cores") or r.get("cores") or "",
+                "stock": int(r.get("Stock") or r.get("stock") or 0),
+                "disponivel": disp
             })
+        produtos.sort(key=lambda x: x["nome"])
         return produtos
     except Exception as e:
-        logging.error(f"Erro ao carregar catálogo: {e}")
+        logging.exception(f"Erro catálogo: {e}")
         return []
 
-def get_orders(sheet_name="Pedidos"):
-    """Carrega os pedidos salvos na planilha formatando as chaves para o template."""
+def get_product_by_id(produto_id) -> Optional[Dict]:
+    for p in load_catalog():
+        if str(p["id"]) == str(produto_id): return p
+    return None
+
+def search_products(texto) -> List[Dict]:
+    texto = texto.lower().strip()
+    return [p for p in load_catalog() if texto in p["nome"].lower() or texto in p["categoria"].lower() or texto in p["descricao"].lower()]
+
+def get_products_by_category(categoria) -> List[Dict]:
+    categoria = categoria.lower()
+    return [p for p in load_catalog() if p["categoria"].lower() == categoria]
+
+# ==========================================================
+# PRODUTOS (CRUD)
+# ==========================================================
+
+def add_product(produto):
+    sheet = get_sheet("Produtos")
+    if not sheet: return False
     try:
-        sheet = get_sheet(sheet_name)
-        data = sheet_to_dict(sheet)
-        pedidos_formatados = []
-
-        for i, r in enumerate(data, start=2):  # Linhas da folha (cabeçalho é 1)
-            raw_itens = r.get("Itens_JSON") or r.get("Itens_Texto") or "[]"
-            
-            # Tenta decodificar o JSON se possível
-            itens_parsed = []
-            if isinstance(raw_itens, str) and raw_itens.startswith(("[", "{")):
-                try:
-                    itens_parsed = json.loads(raw_itens)
-                except Exception:
-                    itens_parsed = []
-
-            pedidos_formatados.append({
-                "id": str(r.get("ID") or f"PED-{i}"),
-                "row_index": i,
-                "nome": r.get("Cliente", "Cliente"),
-                "contacto": r.get("Contacto", "N/A"),
-                "pedido": r.get("Itens_Texto") or r.get("Itens") or "Sem detalhes",
-                "itens": raw_itens,
-                "itens_parsed": itens_parsed,
-                "total": r.get("Total", "0"),
-                "hora": r.get("Data") or r.get("Hora") or "N/A",
-                "data": r.get("Data") or r.get("Hora") or "N/A",
-                "status": r.get("Status", "Pendente")
-            })
-
-        return pedidos_formatados
-    except Exception as e:
-        logging.error(f"Erro ao carregar pedidos: {e}")
-        return []
-
-def add_order(sheet_name, cliente_nome, contacto_completo, cart_items, hora_str, status="Pendente"):
-    """Salva um novo pedido na planilha."""
-    try:
-        sheet = get_sheet(sheet_name)
-        
-        # Formata o resumo em texto simples
-        resumo_texto = []
-        total_calculado = 0.0
-
-        for item in cart_items:
-            nome = item.get("nome", "Produto")
-            qtd = int(item.get("quantidade") or item.get("qtd") or 1)
-            preco = float(str(item.get("preco", 0)).replace("MT", "").replace(",", ".").strip() or 0)
-            tam = item.get("tamanho") or item.get("tam") or ""
-            cor = item.get("cor") or ""
-
-            detalhes = f"{qtd}x {nome}"
-            if tam or cor:
-                detalhes += f" ({tam}/{cor})"
-            resumo_texto.append(detalhes)
-            total_calculado += (preco * qtd)
-
-        itens_str = ", ".join(resumo_texto)
-        itens_json = json.dumps(cart_items, ensure_ascii=False)
-
-        # Gerar ID único
-        existentes = sheet.get_all_records()
-        novo_id = f"PED-{(len(existentes) + 1):03d}"
-
-        nova_linha = [
-            novo_id,
-            cliente_nome,
-            contacto_completo,
-            itens_str,
-            f"{total_calculado:.2f} MT",
-            hora_str,
-            status,
-            itens_json
-        ]
-
-        sheet.append_row(nova_linha)
-        return True
-    except Exception as e:
-        logging.error(f"Erro ao adicionar pedido: {e}")
-        return False
-
-def update_order_status(sheet_name, pedido_id, novo_status):
-    """Atualiza o estado de um pedido pelo ID ou pelo índice da linha."""
-    try:
-        sheet = get_sheet(sheet_name)
-        records = sheet.get_all_records()
-
-        row_to_update = None
-        for index, row in enumerate(records, start=2):
-            if str(row.get("ID")) == str(pedido_id):
-                row_to_update = index
-                break
-
-        if not row_to_update:
-            # Tenta tratar pedido_id diretamente como número da linha se for numérico
-            try:
-                row_to_update = int(pedido_id)
-            except ValueError:
-                return False
-
-        # Na nossa estrutura: Coluna 7 (G) é o Status
-        sheet.update_cell(row_to_update, 7, novo_status)
-        return True
-    except Exception as e:
-        logging.error(f"Erro ao atualizar status do pedido: {e}")
-        return False
-
-def add_product(produto_dict):
-    """Adiciona um novo produto ao catálogo."""
-    try:
-        sheet = get_sheet("Produtos")
-        records = sheet.get_all_records()
-        novo_id = str(len(records) + 1)
-
+        novo_id = str(uuid.uuid4())[:8]
         linha = [
             novo_id,
-            produto_dict.get("nome", ""),
-            produto_dict.get("categoria", "Geral"),
-            produto_dict.get("preco", "0"),
-            produto_dict.get("tamanhos", ""),
-            produto_dict.get("cores", ""),
-            produto_dict.get("stock", 1),
-            produto_dict.get("fotos", ""),
-            produto_dict.get("descricao", "")
+            produto.get("categoria", "Geral"),
+            produto.get("nome", ""),
+            produto.get("descricao", ""),
+            produto.get("preco", "0"),
+            produto.get("fotos", ""),
+            produto.get("tamanhos", ""),
+            produto.get("cores", ""),
+            produto.get("stock", 1),
+            produto.get("disponivel", "SIM")
         ]
-
         sheet.append_row(linha)
         return True
     except Exception as e:
-        logging.error(f"Erro ao adicionar produto: {e}")
+        logging.exception(f"Erro add_product: {e}")
         return False
 
-def update_product(produto_id, produto_dict):
-    """Atualiza os dados de um produto existente."""
+def update_product(produto_id, produto):
+    sheet = get_sheet("Produtos")
+    if not sheet: return False
     try:
-        sheet = get_sheet("Produtos")
         records = sheet.get_all_records()
-
-        row_to_update = None
-        for index, row in enumerate(records, start=2):
-            if str(row.get("ID")) == str(produto_id):
-                row_to_update = index
-                break
-
-        if not row_to_update:
-            return False
-
-        novos_valores = [
-            str(produto_id),
-            produto_dict.get("nome", ""),
-            produto_dict.get("categoria", "Geral"),
-            produto_dict.get("preco", "0"),
-            produto_dict.get("tamanhos", ""),
-            produto_dict.get("cores", ""),
-            produto_dict.get("stock", 1),
-            produto_dict.get("fotos", ""),
-            produto_dict.get("descricao", "")
-        ]
-
-        cell_range = f"A{row_to_update}:I{row_to_update}"
-        sheet.update(cell_range, [novos_valores])
-        return True
-    except Exception as e:
-        logging.error(f"Erro ao atualizar produto: {e}")
-        return False
-
-def delete_product(produto_id):
-    """Remove um produto da planilha pelo ID."""
-    try:
-        sheet = get_sheet("Produtos")
-        records = sheet.get_all_records()
-
-        for index, row in enumerate(records, start=2):
-            if str(row.get("ID")) == str(produto_id):
-                sheet.delete_rows(index)
+        for i, row in enumerate(records, start=2):
+            if str(row.get("ID") or row.get("id")) == str(produto_id):
+                valores = [
+                    str(produto_id),
+                    produto.get("categoria", row.get("Categoria") or row.get("categoria", "Geral")),
+                    produto.get("nome", row.get("Nome") or row.get("nome", "")),
+                    produto.get("descricao", row.get("Descricao") or row.get("descricao", "")),
+                    produto.get("preco", row.get("Preco") or row.get("preco", "0")),
+                    produto.get("fotos", row.get("Fotos") or row.get("fotos", "")),
+                    produto.get("tamanhos", row.get("Tamanhos") or row.get("tamanhos", "")),
+                    produto.get("cores", row.get("Cores") or row.get("cores", "")),
+                    produto.get("stock", row.get("Stock") or row.get("stock", 1)),
+                    produto.get("disponivel", row.get("Disponivel") or row.get("disponivel", "SIM"))
+                ]
+                sheet.update(f"A{i}:J{i}", [valores])
                 return True
         return False
     except Exception as e:
-        logging.error(f"Erro ao eliminar produto: {e}")
+        logging.exception(f"Erro update_product: {e}")
         return False
+
+def delete_product(produto_id):
+    sheet = get_sheet("Produtos")
+    if not sheet: return False
+    try:
+        records = sheet.get_all_records()
+        for i, row in enumerate(records, start=2):
+            if str(row.get("ID") or row.get("id")) == str(produto_id):
+                sheet.delete_rows(i)
+                return True
+        return False
+    except Exception as e:
+        logging.exception(f"Erro delete_product: {e}")
+        return False
+
+# ==========================================================
+# FUNÇÕES AUXILIARES
+# ==========================================================
+
+def product_exists(produto_id):
+    return get_product_by_id(produto_id) is not None
+
+def total_products():
+    return len(load_catalog())
+
+def categories():
+    return sorted(list(set(p["categoria"] for p in load_catalog())))
+
+def products_available():
+    return [p for p in load_catalog() if int(p.get("stock", 0)) > 0]
+
+def products_out_stock():
+    return [p for p in load_catalog() if int(p.get("stock", 0)) <= 0]
+
+# ==========================================================
+# PEDIDOS
+# ==========================================================
+
+def add_order(cliente, contacto, itens):
+    sheet = get_sheet("Pedidos")
+    if not sheet: return False
+    try:
+        if isinstance(itens, str):
+            itens = json.loads(itens)
+
+        total = 0.0
+        resumo = []
+
+        for item in itens:
+            qtd = safe_float(item.get("quantidade") or item.get("qtd") or 1)
+            raw_preco = str(item.get("preco", 0)).replace("MT", "").replace(",", ".").strip()
+            preco = safe_float(raw_preco)
+            
+            subtotal = qtd * preco
+            total += subtotal
+
+            resumo.append({
+                "produto": item.get("nome") or item.get("title") or "Produto",
+                "cor": item.get("cor", ""),
+                "tamanho": item.get("tamanho") or item.get("tam") or "",
+                "quantidade": qtd,
+                "preco": preco,
+                "subtotal": subtotal
+            })
+
+        pedido_texto = "\n".join(
+            f'{int(i["quantidade"])}x {i["produto"]} ({i["cor"]}/{i["tamanho"]})'
+            for i in resumo
+        )
+
+        row = [
+            str(uuid.uuid4())[:8],
+            cliente,
+            contacto,
+            pedido_texto,
+            f"{round(total, 2)} MT",
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Pendente",
+            json.dumps(resumo, ensure_ascii=False)
+        ]
+
+        sheet.append_row(row)
+        return True
+
+    except Exception as e:
+        logging.exception(f"Erro add_order: {e}")
+        return False
+
+def get_orders():
+    sheet = get_sheet("Pedidos")
+    if not sheet: return []
+
+    try:
+        pedidos = []
+
+        for i, row in enumerate(sheet.get_all_records(), start=2):
+            itens_json = row.get("Itens_JSON") or row.get("itens_json") or "[]"
+
+            try:
+                itens_parsed = json.loads(itens_json)
+            except:
+                itens_parsed = []
+
+            pedidos.append({
+                "row_index": i,
+                "id": str(row.get("ID") or row.get("id") or ""),
+                "nome": row.get("Cliente") or row.get("cliente") or "",
+                "contacto": row.get("Contacto") or row.get("contacto") or "",
+                "pedido": row.get("Itens_Texto") or row.get("Pedido") or row.get("pedido") or "",
+                "total": str(row.get("Total") or "0 MT"),
+                "hora": row.get("Data") or row.get("Hora") or "",
+                "data": row.get("Data") or "",
+                "status": row.get("Status") or "Pendente",
+                "itens": itens_json,
+                "itens_parsed": itens_parsed
+            })
+
+        pedidos.sort(key=lambda x: x["hora"], reverse=True)
+        return pedidos
+
+    except Exception as e:
+        logging.exception(f"Erro get_orders: {e}")
+        return []
+
+def update_order_status(order_id, status):
+    sheet = get_sheet("Pedidos")
+    if not sheet: return False
+    try:
+        headers = sheet.row_values(1)
+        status_col = 7
+        for idx, h in enumerate(headers, start=1):
+            if h.lower() in ["status", "estado"]:
+                status_col = idx
+                break
+
+        records = sheet.get_all_records()
+        for i, row in enumerate(records, start=2):
+            if str(row.get("ID") or row.get("id")) == str(order_id):
+                sheet.update_cell(i, status_col, status)
+                return True
+
+        return False
+
+    except Exception as e:
+        logging.exception(f"Erro update_order_status: {e}")
+        return False
+
+# ==========================================================
+# ESTATÍSTICAS
+# ==========================================================
+
+def dashboard_stats():
+    pedidos = get_orders()
+    return {
+        "total_pedidos": len(pedidos),
+        "pendentes": len([p for p in pedidos if str(p["status"]).lower() == "pendente"]),
+        "concluidos": len([p for p in pedidos if str(p["status"]).lower() in ["concluido", "entregue"]]),
+        "cancelados": len([p for p in pedidos if str(p["status"]).lower() == "cancelado"]),
+        "vendas": round(sum(safe_float(str(p["total"]).replace("MT", "").replace(",", ".").strip()) for p in pedidos), 2)
+    }
+
+# ==========================================================
+# UTILITÁRIOS
+# ==========================================================
+
+def generate_id():
+    return str(uuid.uuid4())[:8]
+
+def format_price(valor):
+    try:
+        return round(float(valor), 2)
+    except:
+        return 0
+
+def safe_float(valor):
+    try:
+        return float(valor)
+    except:
+        return 0.0
+
+def safe_int(valor):
+    try:
+        return int(valor)
+    except:
+        return 0
+
+def validate_product(produto):
+    obrigatorios = ["nome", "categoria", "preco"]
+    for campo in obrigatorios:
+        if not produto.get(campo):
+            return False, f"Campo obrigatório: {campo}"
+    return True, "OK"
+
+# ==========================================================
+# EXPORTS
+# ==========================================================
+
+__all__ = [
+    "load_catalog",
+    "get_product_by_id",
+    "search_products",
+    "get_products_by_category",
+    "add_product",
+    "update_product",
+    "delete_product",
+    "add_order",
+    "get_orders",
+    "update_order_status",
+    "dashboard_stats",
+    "total_products",
+    "products_available",
+    "products_out_stock",
+    "categories"
+]
