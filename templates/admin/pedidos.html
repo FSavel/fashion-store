@@ -3,80 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Admin | Pedidos</title>
-    <style>
-        body {
-            background-color: #111827;
-            color: #f9fafb;
-            font-family: system-ui, -apple-system, sans-serif;
-            padding: 20px;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #374151;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        h1 { color: #f59e0b; font-size: 1.5rem; }
-        .btn-logout {
-            background: #ef4444;
-            color: white;
-            padding: 8px 16px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #1f2937;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #374151;
-        }
-        th { background: #374151; color: #f59e0b; }
-        .pedido-detalhe { white-space: pre-line; font-size: 0.9rem; }
-    </style>
+    <title>Gestão de Pedidos - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 </head>
-<body>
-    <header>
-        <h1>{{ config.NOME_LOJA }} - Registo de Pedidos</h1>
-        <a href="/admin/logout" class="btn-logout">Sair</a>
-    </header>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-bag-check me-2"></i>Pedidos Efetuados</h2>
+            <a href="/admin" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Voltar ao Painel</a>
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Cliente</th>
-                <th>Contacto</th>
-                <th>Itens Solicitados</th>
-                <th>Total</th>
-                <th>Data / Hora</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in pedidos %}
-            <tr>
-                <td><strong>#{{ p.get('id', 'N/A') }}</strong></td>
-                <td>{{ p.get('nome', 'N/A') }}</td>
-                <td>{{ p.get('contacto', 'N/A') }}</td>
-                <td class="pedido-detalhe">{{ p.get('pedido', 'N/A') }}</td>
-                <td style="color: #f59e0b; font-weight: bold;">{{ p.get('total', '0 MT') }}</td>
-                <td>{{ p.get('hora', 'N/A') }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6" style="text-align: center; color: #9ca3af;">Nenhum pedido registado até ao momento.</td>
-            </tr>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
             {% endfor %}
-        </tbody>
-    </table>
+          {% endif %}
+        {% endwith %}
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Data / Hora</th>
+                                <th>Cliente / Contacto</th>
+                                <th>Resumo do Pedido</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pedidos %}
+                                {% for p in pedidos %}
+                                <tr>
+                                    <td><strong>#{{ p.get('id', 'N/A') }}</strong></td>
+                                    <td><small class="text-muted">{{ p.get('hora', p.get('data', 'N/A')) }}</small></td>
+                                    <td>
+                                        <div class="fw-bold">{{ p.get('nome', 'Cliente') }}</div>
+                                        <small class="text-muted">{{ p.get('contacto', 'N/A') }}</small>
+                                    </td>
+                                    <td>
+                                        <div>{{ p.get('pedido', p.get('itens', 'Sem detalhes')) }}</div>
+                                        
+                                        {% if p.itens_parsed %}
+                                            <button class="btn btn-sm btn-link p-0 text-decoration-none mt-1" type="button" data-bs-toggle="collapse" data-bs-target="#items-{{ loop.index }}">
+                                                <small><i class="bi bi-list-ul me-1"></i>Ver itens detalhados</small>
+                                            </button>
+                                            <div class="collapse mt-2" id="items-{{ loop.index }}">
+                                                <ul class="list-group list-group-flush border rounded bg-white small">
+                                                    {% for item in p.itens_parsed %}
+                                                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                                                        <span>
+                                                            <strong>{{ item.get('quantidade', 1) }}x</strong> {{ item.get('nome') }}
+                                                            {% if item.get('tamanho') or item.get('cor') %}
+                                                                <span class="badge bg-secondary ms-1">
+                                                                    {{ item.get('tamanho', '') }} {{ item.get('cor', '') }}
+                                                                </span>
+                                                            {% endif %}
+                                                        </span>
+                                                        <span class="text-muted">{{ item.get('preco') }} MT</span>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-bold text-success">{{ p.get('total', '0 MT') }}</td>
+                                    <td>
+                                        {% set st = p.get('status', 'Pendente') %}
+                                        <span class="badge {% if st == 'Entregue' %}bg-success{% elif st == 'A Caminho' %}bg-info text-dark{% elif st == 'Cancelado' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                                            {{ st }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form action="/admin/pedidos/status" method="POST" class="d-flex gap-1">
+                                            <input type="hidden" name="pedido_id" value="{{ p.get('id') }}">
+                                            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                <option value="Pendente" {% if st == 'Pendente' %}selected{% endif %}>Pendente</option>
+                                                <option value="A Caminho" {% if st == 'A Caminho' %}selected{% endif %}>A Caminho</option>
+                                                <option value="Entregue" {% if st == 'Entregue' %}selected{% endif %}>Entregue</option>
+                                                <option value="Cancelado" {% if st == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">Nenhum pedido registado até ao momento.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
