@@ -2,53 +2,44 @@ import os
 import json
 import logging
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-# Arquivo JSON local de backup/fallback para produtos e pedidos
+# Arquivos JSON locais de backup/fallback
 LOCAL_CATALOG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'catalog.json')
 LOCAL_ORDERS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'orders.json')
 
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
 # ======================================================
 # CONEXÃO GOOGLE SHEETS
 # ======================================================
 def get_gsheet_client():
-    """Inicializa e retorna a conexão com o Google Sheets se as credenciais existirem."""
+    """Inicializa e retorna a conexão com o Google Sheets usando google-auth."""
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON") or getattr(Config, 'GOOGLE_CREDENTIALS_JSON', None)
     
-    if not creds_json:
-        # Tenta carregar do arquivo credentials.json se existir localmente
-        creds_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'credentials.json')
-        if os.path.exists(creds_file):
-            scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-            creds = ServiceAccountCredentials.from_json_keyfile_name(creds_file, scope)
-            return gspread.authorize(creds)
-        return None
-
-    try:
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds_dict = json.loads(creds_json)
-        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-        return gspread.authorize(creds)
-    except Exception as e:
-        logger.error(f"Erro ao autenticar com Google Sheets: {e}")
-        return None
-
-
-def get_worksheet(sheet_name):
-    """Acessa uma aba específica da planilha Google Sheets."""
-    client = get_gsheet_client()
-    spreadsheet_id = os.environ.get("SPREADSHEET_ID") or getattr(Config, 'SPREADSHEET_ID', None)
-    
-    if client and spreadsheet_id:
+    if creds_json:
         try:
-            return client.open_by_key(spreadsheet_id).worksheet(sheet_name)
+            creds_dict = json.loads(creds_json) if isinstance(creds_json, str) else creds_json
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+            return gspread.authorize(creds)
         except Exception as e:
-            logger.error(f"Erro ao abrir a aba {sheet_name}: {e}")
-            return None
+            logger.error(f"Erro ao autenticar com GOOGLE_CREDENTIALS_JSON: {e}")
+
+    # Tenta carregar do arquivo local se existir
+    creds_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'credentials.json')
+    if os.path.exists(creds_file):
+        try:
+            creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
+            return gspread.authorize(creds)
+        except Exception as e:
+            logger.error(f"Erro ao carregar credentials.json: {e}")
+
     return None
 
 
