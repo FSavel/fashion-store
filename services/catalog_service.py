@@ -10,6 +10,10 @@ from google.oauth2.service_account import Credentials
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 logging.basicConfig(level=logging.INFO)
 
+# ==========================================================
+# CONEXÃO GOOGLE SHEETS
+# ==========================================================
+
 def get_google_client():
     creds = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if not creds: return None
@@ -91,7 +95,7 @@ def get_products_by_category(categoria) -> List[Dict]:
     return [p for p in load_catalog() if p["categoria"].lower() == categoria]
 
 # ==========================================================
-# PRODUTOS (CRUD)
+# PRODUTOS (CRUD ADMIN)
 # ==========================================================
 
 def add_product(produto):
@@ -158,7 +162,7 @@ def delete_product(produto_id):
         return False
 
 # ==========================================================
-# FUNÇÕES AUXILIARES
+# FUNÇÕES AUXILIARES DE PRODUTOS
 # ==========================================================
 
 def product_exists(produto_id):
@@ -246,6 +250,7 @@ def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None
         return False
 
 def get_orders(sheet_name="Pedidos"):
+    """Retorna a lista de pedidos tratando variações nos nomes e maiúsculas das colunas."""
     sheet = get_sheet(sheet_name if isinstance(sheet_name, str) else "Pedidos")
     if not sheet: return []
 
@@ -253,28 +258,50 @@ def get_orders(sheet_name="Pedidos"):
         pedidos = []
 
         for i, row in enumerate(sheet.get_all_records(), start=2):
-            itens_json = row.get("Itens_JSON") or row.get("itens_json") or "[]"
+            # Converter todas as chaves da linha para minúsculas
+            r = {str(k).strip().lower(): v for k, v in row.items()}
 
-            try:
-                itens_parsed = json.loads(itens_json)
-            except Exception:
-                itens_parsed = []
+            # Capturar Cliente
+            nome = r.get("cliente") or r.get("nome") or r.get("nome do cliente") or "Cliente"
+
+            # Capturar Contacto/Telefone
+            contacto = r.get("contacto") or r.get("telefone") or r.get("celular") or ""
+
+            # Capturar Itens/Texto do Pedido
+            itens_texto = r.get("itens_texto") or r.get("pedido") or r.get("itens") or r.get("produtos") or ""
+            itens_json = r.get("itens_json") or r.get("carrinho") or "[]"
+
+            # Parse do JSON dos itens
+            itens_parsed = []
+            if isinstance(itens_json, str) and itens_json.strip().startswith("["):
+                try:
+                    itens_parsed = json.loads(itens_json)
+                except Exception:
+                    itens_parsed = []
+
+            # Tratar Valor Total (Evita duplicação de MT e trata formato float)
+            raw_total = str(r.get("total") or r.get("valor") or "0").replace("MT", "").strip()
+            total_float = safe_float(raw_total)
+            total_fmt = f"{total_float:.2f} MT" if total_float > 0 else "0.00 MT"
+
+            # Capturar Status
+            status = r.get("status") or r.get("estado") or "Pendente"
 
             pedidos.append({
                 "row_index": i,
-                "id": str(row.get("ID") or row.get("id") or ""),
-                "nome": row.get("Cliente") or row.get("cliente") or "",
-                "contacto": row.get("Contacto") or row.get("contacto") or "",
-                "pedido": row.get("Itens_Texto") or row.get("Pedido") or row.get("pedido") or "",
-                "total": str(row.get("Total") or "0 MT"),
-                "hora": row.get("Data") or row.get("Hora") or "",
-                "data": row.get("Data") or "",
-                "status": row.get("Status") or "Pendente",
+                "id": str(r.get("id") or f"#{i-1}"),
+                "nome": nome,
+                "contacto": contacto,
+                "pedido": itens_texto if itens_texto else ("Com itens no carrinho" if itens_parsed else "Sem detalhes de itens"),
+                "total": total_fmt,
+                "hora": str(r.get("data") or r.get("hora") or ""),
+                "data": str(r.get("data") or ""),
+                "status": status,
                 "itens": itens_json,
                 "itens_parsed": itens_parsed
             })
 
-        pedidos.sort(key=lambda x: x["hora"], reverse=True)
+        pedidos.sort(key=lambda x: x["row_index"], reverse=True)
         return pedidos
 
     except Exception as e:
