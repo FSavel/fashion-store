@@ -205,7 +205,7 @@ def admin_dashboard():
             except ValueError:
                 pass
 
-    # Aponta para templates/admin.html (está diretamente em templates/)
+    # Aponta para templates/admin.html
     return render_template(
         "admin.html", 
         produtos=produtos, 
@@ -249,7 +249,7 @@ def admin_update_order_status():
         else:
             flash("Erro ao atualizar o estado do pedido.", "danger")
 
-    return redirect(url_for("admin_dashboard"))
+    return redirect(url_for("admin_pedidos"))
 
 def processar_imagem_produto(request_obj):
     """Auxiliar: Processa upload de ficheiro no Cloudinary ou retorna a URL enviada por texto."""
@@ -346,8 +346,8 @@ def admin_pedidos():
     """Exibe a lista e o estado dos pedidos efetuados."""
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
     pedidos = get_orders(sheet_name)
-    # Aponta para templates/admin/pedidos.html
-    return render_template("admin/pedidos.html", pedidos=pedidos, config=Config)
+    # Aponta diretamente para templates/pedidos.html
+    return render_template("pedidos.html", pedidos=pedidos, config=Config)
 
 @app.route("/admin/logout")
 def admin_logout():
