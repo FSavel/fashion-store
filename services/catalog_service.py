@@ -43,6 +43,20 @@ def get_gsheet_client():
     return None
 
 
+def get_worksheet(sheet_name):
+    """Acessa uma aba específica da planilha Google Sheets."""
+    client = get_gsheet_client()
+    spreadsheet_id = os.environ.get("SPREADSHEET_ID") or getattr(Config, 'SPREADSHEET_ID', None)
+    
+    if client and spreadsheet_id:
+        try:
+            return client.open_by_key(spreadsheet_id).worksheet(sheet_name)
+        except Exception as e:
+            logger.error(f"Erro ao abrir a aba {sheet_name}: {e}")
+            return None
+    return None
+
+
 # ======================================================
 # OPERAÇÕES DE PRODUTOS / CATÁLOGO
 # ======================================================
@@ -99,7 +113,6 @@ def add_product(novo_produto):
     
     if ws:
         try:
-            # Pega o último ID para incremental
             records = ws.get_all_records()
             next_id = len(records) + 1
             
@@ -310,8 +323,7 @@ def add_order(sheet_name, cliente, contacto, cart_itens, data_hora, status="Pend
 
 def update_order_status(sheet_name, order_id, new_status):
     """
-    Atualiza o estado (Pendente, A Caminho, Entregue, Cancelado) de um pedido especifico.
-    Resolve o ImportError do Render.
+    Atualiza o estado (Pendente, A Caminho, Entregue, Cancelado) de um pedido específico.
     """
     ws = get_worksheet(sheet_name)
     
@@ -319,7 +331,6 @@ def update_order_status(sheet_name, order_id, new_status):
         try:
             cell = ws.find(str(order_id))
             if cell:
-                # Procura a coluna do Status na linha de cabeçalho (Linha 1)
                 headers = ws.row_values(1)
                 col_status = 6  # Padrão: Coluna F
                 
