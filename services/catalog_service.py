@@ -181,12 +181,6 @@ def products_out_stock():
 # ==========================================================
 
 def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None, cart_items=None, data_hora=None, status="Pendente"):
-    """
-    Adiciona um novo pedido. Aceita tanto a assinatura curta:
-      add_order(cliente, contacto, itens)
-    como a assinatura vinda do app.py:
-      add_order(sheet_name, cliente, contacto, cart_items, data_hora, status="Pendente")
-    """
     sheet = get_sheet("Pedidos")
     if not sheet: return False
     
@@ -252,7 +246,6 @@ def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None
         return False
 
 def get_orders(sheet_name="Pedidos"):
-    """Retorna a lista de pedidos da planilha."""
     sheet = get_sheet(sheet_name if isinstance(sheet_name, str) else "Pedidos")
     if not sheet: return []
 
@@ -288,8 +281,34 @@ def get_orders(sheet_name="Pedidos"):
         logging.exception(f"Erro get_orders: {e}")
         return []
 
+def update_order_status(order_id, status):
+    sheet = get_sheet("Pedidos")
+    if not sheet: return False
+    try:
+        headers = sheet.row_values(1)
+        status_col = 7
+        for idx, h in enumerate(headers, start=1):
+            if h.lower() in ["status", "estado"]:
+                status_col = idx
+                break
+
+        records = sheet.get_all_records()
+        for i, row in enumerate(records, start=2):
+            if str(row.get("ID") or row.get("id")) == str(order_id):
+                sheet.update_cell(i, status_col, status)
+                return True
+
+        return False
+
+    except Exception as e:
+        logging.exception(f"Erro update_order_status: {e}")
+        return False
+
+# ==========================================================
+# ESTATÍSTICAS
+# ==========================================================
+
 def dashboard_stats(sheet_name="Pedidos"):
-    """Calcula estatísticas do painel admin."""
     pedidos = get_orders(sheet_name)
     return {
         "total_pedidos": len(pedidos),
