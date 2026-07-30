@@ -180,17 +180,36 @@ def products_out_stock():
 # PEDIDOS
 # ==========================================================
 
-def add_order(cliente, contacto, itens):
+def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None, cart_items=None, data_hora=None, status="Pendente"):
+    """
+    Adiciona um novo pedido. Aceita tanto a assinatura curta:
+      add_order(cliente, contacto, itens)
+    como a assinatura vinda do app.py:
+      add_order(sheet_name, cliente, contacto, cart_items, data_hora, status="Pendente")
+    """
     sheet = get_sheet("Pedidos")
     if not sheet: return False
+    
     try:
+        if cart_items is not None:
+            cliente = contacto_ou_cliente
+            contacto = itens_ou_contacto
+            itens = cart_items
+        else:
+            cliente = cliente_ou_sheet
+            contacto = contacto_ou_cliente
+            itens = itens_ou_contacto
+
         if isinstance(itens, str):
-            itens = json.loads(itens)
+            try:
+                itens = json.loads(itens)
+            except Exception:
+                itens = []
 
         total = 0.0
         resumo = []
 
-        for item in itens:
+        for item in (itens or []):
             qtd = safe_float(item.get("quantidade") or item.get("qtd") or 1)
             raw_preco = str(item.get("preco", 0)).replace("MT", "").replace(",", ".").strip()
             preco = safe_float(raw_preco)
@@ -200,26 +219,28 @@ def add_order(cliente, contacto, itens):
 
             resumo.append({
                 "produto": item.get("nome") or item.get("title") or "Produto",
-                "cor": item.get("cor", ""),
-                "tamanho": item.get("tamanho") or item.get("tam") or "",
+                "cor": item.get("cor", "N/A"),
+                "tamanho": item.get("tamanho") or item.get("tam") or "N/A",
                 "quantidade": qtd,
                 "preco": preco,
                 "subtotal": subtotal
             })
 
         pedido_texto = "\n".join(
-            f'{int(i["quantidade"])}x {i["produto"]} ({i["cor"]}/{i["tamanho"]})'
+            f'{int(i["quantidade"])}x {i["produto"]} (Tam: {i["tamanho"]}, Cor: {i["cor"]}) - {i["subtotal"]:.2f} MT'
             for i in resumo
-        )
+        ) if resumo else "Detalhes no JSON"
+
+        data_final = data_hora or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         row = [
             str(uuid.uuid4())[:8],
-            cliente,
-            contacto,
+            cliente or "Cliente",
+            contacto or "N/A",
             pedido_texto,
             f"{round(total, 2)} MT",
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Pendente",
+            data_final,
+            status or "Pendente",
             json.dumps(resumo, ensure_ascii=False)
         ]
 
