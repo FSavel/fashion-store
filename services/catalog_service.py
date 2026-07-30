@@ -236,7 +236,7 @@ def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None
             cliente or "Cliente",
             contacto or "N/A",
             pedido_texto,
-            f"{round(total, 2)} MT",
+            f"{round(total, 2)}",
             data_final,
             status or "Pendente",
             json.dumps(resumo, ensure_ascii=False)
@@ -279,10 +279,10 @@ def get_orders(sheet_name="Pedidos"):
                 except Exception:
                     itens_parsed = []
 
-            # Tratar Valor Total (Evita duplicação de MT e trata formato float)
+            # Tratar Valor Total (Retorna APENAS o número formatado para evitar MT MT)
             raw_total = str(r.get("total") or r.get("valor") or "0").replace("MT", "").strip()
             total_float = safe_float(raw_total)
-            total_fmt = f"{total_float:.2f} MT" if total_float > 0 else "0.00 MT"
+            total_fmt = f"{total_float:.2f}"
 
             # Capturar Status
             status = r.get("status") or r.get("estado") or "Pendente"
