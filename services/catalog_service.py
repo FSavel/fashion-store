@@ -250,7 +250,7 @@ def add_order(cliente_ou_sheet, contacto_ou_cliente=None, itens_ou_contacto=None
         return False
 
 def get_orders(sheet_name="Pedidos"):
-    """Retorna a lista de pedidos tratando variações nos nomes e maiúsculas das colunas."""
+    """Retorna a lista de pedidos tratando variações nos nomes das colunas e montando resumo dos itens."""
     sheet = get_sheet(sheet_name if isinstance(sheet_name, str) else "Pedidos")
     if not sheet: return []
 
@@ -258,14 +258,21 @@ def get_orders(sheet_name="Pedidos"):
         pedidos = []
 
         for i, row in enumerate(sheet.get_all_records(), start=2):
-            # Converter todas as chaves da linha para minúsculas
+            # Normalizar chaves para minúsculas
             r = {str(k).strip().lower(): v for k, v in row.items()}
 
             # Capturar Cliente
-            nome = r.get("cliente") or r.get("nome") or r.get("nome do cliente") or "Cliente"
+            nome = r.get("cliente") or r.get("nome") or r.get("nome do cliente") or r.get("nome_cliente") or ""
 
-            # Capturar Contacto/Telefone
+            # Capturar Contacto / Telefone / Endereço / Pagamento
             contacto = r.get("contacto") or r.get("telefone") or r.get("celular") or ""
+            endereco = r.get("endereco") or r.get("end") or ""
+            pagamento = r.get("pagamento") or r.get("pag") or ""
+
+            # Reconstruir linha de detalhes do cliente se necessário
+            detalhes_contacto = contacto
+            if endereco: detalhes_contacto += f" | End: {endereco}"
+            if pagamento: detalhes_contacto += f" | Pag: {pagamento}"
 
             # Capturar Itens/Texto do Pedido
             itens_texto = r.get("itens_texto") or r.get("pedido") or r.get("itens") or r.get("produtos") or ""
@@ -279,7 +286,20 @@ def get_orders(sheet_name="Pedidos"):
                 except Exception:
                     itens_parsed = []
 
-            # Tratar Valor Total (Retorna APENAS o número formatado para evitar MT MT)
+            # Se 'itens_texto' veio em branco mas temos o JSON, gera o texto automaticamente
+            if not itens_texto and itens_parsed:
+                linhas_itens = []
+                for item in itens_parsed:
+                    qtd = item.get("quantidade") or item.get("qtd") or 1
+                    prod_nome = item.get("nome") or item.get("produto") or item.get("title") or "Item"
+                    tam = item.get("tamanho") or item.get("tam") or ""
+                    cor = item.get("cor") or ""
+                    det = f" (Tam: {tam}" if tam else ""
+                    det += f", Cor: {cor})" if cor else (")" if det else "")
+                    linhas_itens.append(f"{qtd}x {prod_nome}{det}")
+                itens_texto = ", ".join(linhas_itens)
+
+            # Tratar Valor Total
             raw_total = str(r.get("total") or r.get("valor") or "0").replace("MT", "").strip()
             total_float = safe_float(raw_total)
             total_fmt = f"{total_float:.2f}"
@@ -290,9 +310,9 @@ def get_orders(sheet_name="Pedidos"):
             pedidos.append({
                 "row_index": i,
                 "id": str(r.get("id") or f"#{i-1}"),
-                "nome": nome,
-                "contacto": contacto,
-                "pedido": itens_texto if itens_texto else ("Com itens no carrinho" if itens_parsed else "Sem detalhes de itens"),
+                "nome": nome if nome else "Cliente",
+                "contacto": detalhes_contacto,
+                "pedido": itens_texto if itens_texto else "Sem detalhes de itens",
                 "total": total_fmt,
                 "hora": str(r.get("data") or r.get("hora") or ""),
                 "data": str(r.get("data") or ""),
@@ -307,29 +327,6 @@ def get_orders(sheet_name="Pedidos"):
     except Exception as e:
         logging.exception(f"Erro get_orders: {e}")
         return []
-
-def update_order_status(order_id, status):
-    sheet = get_sheet("Pedidos")
-    if not sheet: return False
-    try:
-        headers = sheet.row_values(1)
-        status_col = 7
-        for idx, h in enumerate(headers, start=1):
-            if h.lower() in ["status", "estado"]:
-                status_col = idx
-                break
-
-        records = sheet.get_all_records()
-        for i, row in enumerate(records, start=2):
-            if str(row.get("ID") or row.get("id")) == str(order_id):
-                sheet.update_cell(i, status_col, status)
-                return True
-
-        return False
-
-    except Exception as e:
-        logging.exception(f"Erro update_order_status: {e}")
-        return False
 
 # ==========================================================
 # ESTATÍSTICAS
