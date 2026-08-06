@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boutique Elegance | Catálogo Oficial</title>
     
-    <!-- Ícones e Fontes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --primary: #0f172a;       /* Dark slate refinado */
-            --accent: #e11d48;        /* Destaque rosa/vermelho */
+            --primary: #0f172a;
+            --accent: #e11d48;
             --bg-body: #f8fafc;
             --surface: #ffffff;
             --text-main: #0f172a;
@@ -34,7 +33,6 @@
             padding-bottom: 120px;
         }
 
-        /* HEADER FIXO & COMPACTO */
         header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -71,7 +69,6 @@
             font-weight: 500;
         }
 
-        /* BARRA DE PESQUISA */
         .search-container {
             position: relative;
             margin-bottom: 8px;
@@ -103,7 +100,6 @@
             font-size: 14px;
         }
 
-        /* CARROSSEL DE CATEGORIAS */
         .categories-nav {
             display: flex;
             gap: 8px;
@@ -132,7 +128,6 @@
             color: white;
         }
 
-        /* BANNER PROMOCIONAL */
         .promo-banner {
             margin: 16px;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -157,7 +152,6 @@
             margin-bottom: 6px;
         }
 
-        /* GRID E CARDS DOS PRODUTOS */
         .main-container {
             max-width: 1000px;
             margin: 0 auto;
@@ -205,7 +199,7 @@
         .img-container {
             position: relative;
             width: 100%;
-            padding-top: 125%; /* Proporção 4:5 */
+            padding-top: 125%;
             background: #e2e8f0;
             overflow: hidden;
         }
@@ -289,7 +283,21 @@
             pointer-events: none;
         }
 
-        /* MODAL BOTTOM SHEET */
+        /* Empty state da pesquisa */
+        .no-results-container {
+            display: none;
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .no-results-container i {
+            font-size: 40px;
+            margin-bottom: 12px;
+            color: #cbd5e1;
+        }
+
+        /* Modal Bottom Sheet */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -376,7 +384,6 @@
             box-shadow: 0 8px 20px -4px rgba(225, 29, 72, 0.4);
         }
 
-        /* BARRA FLUTUANTE DA SACOLA */
         .cart-floating-btn {
             position: fixed;
             bottom: 20px;
@@ -418,20 +425,18 @@
         </a>
     </div>
 
-    <!-- Pesquisa -->
     <div class="search-container">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="input-busca" placeholder="O que procura hoje? Ex: Vestido, Blusa..." onkeyup="filtrarProdutos()">
     </div>
 
-    <!-- Categorias Dinâmicas -->
     <div class="categories-nav">
         <a class="category-badge active" onclick="filtrarPorCategoria('todos', this)">Todos</a>
         
-        {% set categories_seen = [] %}
+        {% set ns = namespace(categories_seen=[]) %}
         {% for p in produtos %}
-            {% if p.categoria and p.categoria not in categories_seen %}
-                {% set _ = categories_seen.append(p.categoria) %}
+            {% if p.categoria and p.categoria not in ns.categories_seen %}
+                {% set ns.categories_seen = ns.categories_seen + [p.categoria] %}
                 {% set cat_slug = (p.categoria | lower | replace(' ', '-')) %}
                 <a class="category-badge" onclick="filtrarPorCategoria('{{ cat_slug }}', this)">
                     {{ p.categoria }}
@@ -441,7 +446,6 @@
     </div>
 </header>
 
-<!-- Banner Promocional -->
 <div class="promo-banner">
     <div>
         <span class="promo-tag">Tendência</span>
@@ -452,6 +456,12 @@
 </div>
 
 <div class="main-container">
+    <div id="no-results" class="no-results-container">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <p style="font-weight: 700; font-size: 15px;">Nenhum produto encontrado</p>
+        <p style="font-size: 12px; margin-top: 4px;">Tente pesquisar por outros termos ou navegar pelas categorias.</p>
+    </div>
+
     {% for cat_name, items in produtos | groupby('categoria') %}
         {% set cat_slug = ((cat_name if cat_name else 'geral') | lower | replace(' ', '-')) %}
         
@@ -460,10 +470,22 @@
             
             <div class="products-grid">
                 {% for p in items %}
-                    <div class="product-card" data-nome="{{ p.nome | lower }}" onclick="abrirModalVariacoes('{{ p.id }}', '{{ p.nome | replace('\'', '\\\'') }}', '{{ p.preco }}', '{{ (p.tamanhos or '') | replace('\'', '\\\'') }}', '{{ (p.cores or '') | replace('\'', '\\\'') }}')">
+                    <div class="product-card" 
+                         data-id="{{ p.id }}"
+                         data-nome="{{ p.nome }}"
+                         data-nome-lower="{{ p.nome | lower }}"
+                         data-preco="{{ p.preco }}"
+                         data-tamanhos="{{ p.tamanhos or '' }}"
+                         data-cores="{{ p.cores or '' }}"
+                         onclick="abrirModalComElemento(this)">
+                        
                         <div class="img-container">
                             <span class="product-badge">Novo</span>
-                            <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" class="product-img" alt="{{ p.nome }}" loading="lazy">
+                            <img src="{{ p.fotos.split(',')[0] if p.fotos else 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400' }}" 
+                                 onerror="this.src='https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400'"
+                                 class="product-img" 
+                                 alt="{{ p.nome }}" 
+                                 loading="lazy">
                         </div>
                         <div class="product-details">
                             <h4 class="product-title">{{ p.nome }}</h4>
@@ -502,7 +524,6 @@
     </div>
 </div>
 
-<!-- Barra Flutuante da Sacola -->
 <a href="/cart" class="cart-floating-btn" id="cart-floating-bar">
     <span><i class="fa-solid fa-bag-shopping" style="font-size: 18px;"></i> &nbsp;Ver Sacola de Compras</span>
     <span id="cart-counter" style="background: white; color: #15803d; padding: 4px 14px; border-radius: 12px; font-size: 13px; font-weight: 800;">0</span>
@@ -513,7 +534,6 @@
 <script>
 let produtoSelecionado = {};
 
-// --- LÓGICA DE 5 CLIQUES PARA O ADMIN ---
 let cliquesAdmin = 0;
 let tempoCliqueAdmin = null;
 
@@ -531,17 +551,15 @@ function ativarModoAdmin() {
     }
 }
 
-// --- FILTRAGEM DE CATEGORIAS POR ABA ---
 function filtrarPorCategoria(categoriaSlug, elementoClicado) {
     document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
     if(elementoClicado) elementoClicado.classList.add('active');
 
-    // Limpar o campo de busca ao trocar de aba para evitar conflito
     document.getElementById('input-busca').value = '';
+    document.getElementById('no-results').style.display = 'none';
 
     const secoes = document.querySelectorAll('.category-section');
     secoes.forEach(secao => {
-        // Mostra todas as cartas da seção
         secao.querySelectorAll('.product-card').forEach(c => c.style.display = 'flex');
 
         if (categoriaSlug === 'todos' || secao.getAttribute('data-category') === categoriaSlug) {
@@ -552,12 +570,20 @@ function filtrarPorCategoria(categoriaSlug, elementoClicado) {
     });
 }
 
-// --- LÓGICA DO MODAL DE VARIAÇÕES ---
+function abrirModalComElemento(elem) {
+    const id = elem.getAttribute('data-id');
+    const nome = elem.getAttribute('data-nome');
+    const preco = elem.getAttribute('data-preco');
+    const tamanhosStr = elem.getAttribute('data-tamanhos');
+    const coresStr = elem.getAttribute('data-cores');
+    
+    abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr);
+}
+
 function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
     produtoSelecionado = { id, nome, preco, tamanho: '', cor: '' };
     document.getElementById('modal-produto-nome').innerText = nome;
 
-    // Processar Tamanhos
     const containerTamanhos = document.getElementById('container-tamanhos');
     containerTamanhos.innerHTML = '';
     const tamanhos = tamanhosStr ? tamanhosStr.split(',') : ['S', 'M', 'L'];
@@ -574,7 +600,6 @@ function abrirModalVariacoes(id, nome, preco, tamanhosStr, coresStr) {
         containerTamanhos.appendChild(btn);
     });
 
-    // Processar Cores
     const containerCores = document.getElementById('container-cores');
     containerCores.innerHTML = '';
     const cores = coresStr ? coresStr.split(',') : ['Padrão'];
@@ -611,12 +636,11 @@ function confirmarAdicionarCarrinho() {
     fecharModal();
 }
 
-// --- PESQUISA EM TEMPO REAL MELHORADA ---
 function filtrarProdutos() {
     const termo = document.getElementById('input-busca').value.toLowerCase().trim();
     const secoes = document.querySelectorAll('.category-section');
+    let totalVisiveisGeral = 0;
 
-    // Desmarca as abas de categoria enquanto digita
     if(termo !== '') {
         document.querySelectorAll('.category-badge').forEach(b => b.classList.remove('active'));
     }
@@ -626,18 +650,21 @@ function filtrarProdutos() {
         let produtosVisiveisNaSecao = 0;
 
         cards.forEach(card => {
-            const nome = card.getAttribute('data-nome');
+            const nome = card.getAttribute('data-nome-lower');
             if (nome.includes(termo)) {
                 card.style.display = 'flex';
                 produtosVisiveisNaSecao++;
+                totalVisiveisGeral++;
             } else {
                 card.style.display = 'none';
             }
         });
 
-        // Oculta a seção inteira se nenhum produto dela corresponder à busca
         secao.style.display = produtosVisiveisNaSecao > 0 ? 'block' : 'none';
     });
+
+    const noResults = document.getElementById('no-results');
+    noResults.style.display = (totalVisiveisGeral === 0 && termo !== '') ? 'block' : 'none';
 }
 </script>
 
