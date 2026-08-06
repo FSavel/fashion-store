@@ -4,6 +4,7 @@ import os
 import time
 import json
 import logging
+import hmac
 import cloudinary
 import cloudinary.uploader
 
@@ -87,6 +88,43 @@ def invalidate_catalog_cache():
     CACHE_PRODUTOS = None
 
 # ======================================================
+# HELPER DE NORMALIZAÇÃO DE PEDIDOS
+# ======================================================
+def processar_pedidos_raw(pedidos_raw):
+    """Normaliza o formato dos pedidos vindos do Google Sheets."""
+    pedidos = []
+    total_vendas = 0.0
+    pendentes_count = 0
+
+    for p in pedidos_raw:
+        st = str(p.get("status", "Pendente")).strip().title()
+        if not st or st.lower() in ["pendente", "novo"]:
+            st = "Pendente"
+            pendentes_count += 1
+            
+        total_val = 0.0
+        total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
+        try:
+            total_val = float(total_str)
+            if st != "Cancelado":
+                total_vendas += total_val
+        except ValueError:
+            pass
+
+        pedidos.append({
+            "id": p.get("id") or p.get("pedido_id", ""),
+            "cliente": p.get("nome") or p.get("cliente", "Cliente"),
+            "telefone": p.get("contacto") or p.get("telefone", ""),
+            "endereco": p.get("endereco", "N/A"),
+            "pagamento": p.get("pagamento", "N/A"),
+            "data": p.get("data") or p.get("hora", ""),
+            "status": st,
+            "total": total_val,
+            "itens": p.get("itens_parsed", p.get("itens", []))
+        })
+    return pedidos, total_vendas, pendentes_count
+
+# ======================================================
 # ROTAS PWA (SERVICE WORKER, MANIFEST E ÍCONES)
 # ======================================================
 @app.route("/sw.js")
@@ -135,23 +173,28 @@ def api_produtos():
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
     """Regista um novo pedido vindo da Sacola de Compras para o Google Sheets."""
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
 
-    cart = data.get("cart") or data.get("itens", [])
-    if not cart:
+    cart_itens = data.get("cart") or data.get("itens", [])
+    if not cart_itens:
         return jsonify({"success": False, "error": "Carrinho vazio"}), 400
 
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
     contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
+    endereco = data.get("endereco", "N/A")
+    pagamento = data.get("pagamento", "N/A")
+    total = data.get("total", "0")
     
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
     
-    # Chamada corrigida alinhada com os argumentos do catalog_service.py
     sucesso = add_order(
         sheet_name=sheet_name,
         cliente=nome_cliente,
         contacto=contacto_tel,
-        cart_itens=cart,
+        endereco=endereco,
+        pagamento=pagamento,
+        total=total,
+        cart_itens=cart_itens,
         data_hora=hora_mocambique(),
         status="Pendente"
     )
@@ -169,37 +212,7 @@ def admin_dashboard():
     
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
     pedidos_raw = get_orders(sheet_name) or []
-    
-    pedidos = []
-    total_vendas = 0.0
-    pendentes_count = 0
-
-    for p in pedidos_raw:
-        st = str(p.get("status", "Pendente")).strip().title()
-        if not st or st.lower() in ["pendente", "novo"]:
-            st = "Pendente"
-            pendentes_count += 1
-            
-        total_val = 0.0
-        total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
-        try:
-            total_val = float(total_str)
-            if st != "Cancelado":
-                total_vendas += total_val
-        except ValueError:
-            pass
-
-        pedidos.append({
-            "id": p.get("id") or p.get("pedido_id", ""),
-            "cliente": p.get("nome") or p.get("cliente", "Cliente"),
-            "telefone": p.get("contacto") or p.get("telefone", ""),
-            "endereco": p.get("endereco", "N/A"),
-            "pagamento": p.get("pagamento", "N/A"),
-            "data": p.get("data") or p.get("hora", ""),
-            "status": st,
-            "total": total_val,
-            "itens": p.get("itens_parsed", p.get("itens", []))
-        })
+    pedidos, total_vendas, pendentes_count = processar_pedidos_raw(pedidos_raw)
 
     return render_template(
         "admin.html", 
@@ -215,10 +228,13 @@ def admin_login():
     if request.method == "GET":
         return render_template("admin/login.html")
 
-    username = request.form.get("username")
-    password = request.form.get("password")
+    username = request.form.get("username", "")
+    password = request.form.get("password", "")
 
-    if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+    user_ok = hmac.compare_digest(username, getattr(Config, "ADMIN_USERNAME", ""))
+    pass_ok = hmac.compare_digest(password, getattr(Config, "ADMIN_PASSWORD", ""))
+
+    if user_ok and pass_ok:
         session["admin_logged_in"] = True
         return redirect(url_for("admin_dashboard"))
 
@@ -268,6 +284,7 @@ def processar_imagem_produto(request_obj):
             return resultado.get("secure_url")
         except Exception as e:
             logging.error(f"Erro no upload do Cloudinary: {e}")
+            flash("Aviso: Falha ao fazer upload da foto no Cloudinary.", "warning")
             return None
     
     return request_obj.form.get("fotos", "")
@@ -355,7 +372,8 @@ def admin_delete_product(produto_id):
 def admin_pedidos():
     """Exibe a lista e o estado dos pedidos efetuados."""
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
-    pedidos = get_orders(sheet_name)
+    pedidos_raw = get_orders(sheet_name) or []
+    pedidos, _, _ = processar_pedidos_raw(pedidos_raw)
     return render_template("pedidos.html", pedidos=pedidos, config=Config)
 
 @app.route("/admin/logout")
