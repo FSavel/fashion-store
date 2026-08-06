@@ -69,13 +69,6 @@ def load_catalog():
             records = ws.get_all_records()
             produtos = []
             for idx, r in enumerate(records, start=1):
-                # Leitura e verificação da coluna 'disponivel'
-                raw_disp = str(r.get("Disponivel") or r.get("disponivel") or r.get("disponível") or "SIM").strip().upper()
-                is_available = raw_disp in ["SIM", "TRUE", "1", "VERDADEIRO"]
-
-                fotos_raw = str(r.get("Fotos") or r.get("fotos") or r.get("imagem") or "").strip()
-                lista_fotos = [f.strip() for f in fotos_raw.split(",") if f.strip()] if fotos_raw else []
-
                 p = {
                     "id": str(r.get("ID") or r.get("id") or idx),
                     "nome": str(r.get("Nome") or r.get("nome") or ""),
@@ -84,15 +77,10 @@ def load_catalog():
                     "tamanhos": str(r.get("Tamanhos") or r.get("tamanhos") or ""),
                     "cores": str(r.get("Cores") or r.get("cores") or ""),
                     "stock": int(r.get("Stock") or r.get("stock") or 1),
-                    "fotos": fotos_raw,
-                    "imagem": lista_fotos[0] if lista_fotos else "",
-                    "lista_fotos": lista_fotos,
-                    "descricao": str(r.get("Descricao") or r.get("descricao") or ""),
-                    "disponivel": is_available
+                    "fotos": str(r.get("Fotos") or r.get("fotos") or ""),
+                    "descricao": str(r.get("Descricao") or r.get("descricao") or "")
                 }
                 produtos.append(p)
-            
-            logger.info(f"Catálogo carregado com sucesso: {len(produtos)} produtos encontrados.")
             return produtos
         except Exception as e:
             logger.error(f"Erro ao ler catálogo do Google Sheets: {e}")
@@ -135,7 +123,6 @@ def add_product(novo_produto):
                 novo_produto.get("preco", ""),
                 novo_produto.get("tamanhos", ""),
                 novo_produto.get("cores", ""),
-                novo_produto.get("disponivel", "SIM"),
                 novo_produto.get("stock", 1),
                 novo_produto.get("fotos", ""),
                 novo_produto.get("descricao", "")
@@ -161,14 +148,13 @@ def update_product(produto_id, produto_atualizado):
             cell = ws.find(str(produto_id))
             if cell:
                 row = cell.row
-                ws.update(f"A{row}:J{row}", [[
+                ws.update(f"A{row}:I{row}", [[
                     produto_id,
                     produto_atualizado.get("nome", ""),
                     produto_atualizado.get("categoria", ""),
                     produto_atualizado.get("preco", ""),
                     produto_atualizado.get("tamanhos", ""),
                     produto_atualizado.get("cores", ""),
-                    produto_atualizado.get("disponivel", "SIM"),
                     produto_atualizado.get("stock", 1),
                     produto_atualizado.get("fotos", ""),
                     produto_atualizado.get("descricao", "")
@@ -185,7 +171,7 @@ def update_product(produto_id, produto_atualizado):
             produtos[i].update(produto_atualizado)
             updated = True
             break
-        
+    
     if updated:
         save_local_catalog(produtos)
     return updated
