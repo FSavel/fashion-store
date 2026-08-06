@@ -130,12 +130,12 @@ def api_produtos():
     return jsonify({"produtos": get_cached_catalog()})
 
 # ======================================================
-# CHECKOUT / REGISTAR PEDIDO
+# CHECKOUT / REGISTAR PEDIDO NO GOOGLE SHEETS
 # ======================================================
 @app.route("/checkout", methods=["POST"])
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
-    """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
+    """Regista um novo pedido vindo da Sacola de Compras para o Google Sheets."""
     data = request.get_json(silent=True) or {}
 
     cart = data.get("cart") or data.get("itens", [])
@@ -143,23 +143,79 @@ def checkout():
         return jsonify({"success": False, "error": "Carrinho vazio"}), 400
 
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
-    
     contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
     endereco = data.get("endereco") or data.get("cliente_endereco", "N/A")
     pagamento = data.get("pagamento", "Não especificado")
     
-    contacto_completo = f"{contacto_tel} | End: {endereco} | Pag: {pagamento}"
-
+    # Prepara os dados formatados para gravação na folha de pedidos
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    
     sucesso = add_order(
-        getattr(Config, 'SHEET_ORDERS', 'Pedidos'),
-        nome_cliente,
-        contacto_completo,
-        cart,
-        hora_mocambique(),
+        sheet_name=sheet_name,
+        nome=nome_cliente,
+        telefone=contacto_tel,
+        endereco=endereco,
+        pagamento=pagamento,
+        itens=cart,
+        data_hora=hora_mocambique(),
         status="Pendente"
     )
 
     return jsonify({"success": sucesso})
+
+
+# ======================================================
+# ROTAS DE ADMINISTRAÇÃO (PAINEL ADMIN COM KANBAN DE PEDIDOS)
+# ======================================================
+@app.route("/admin")
+@admin_required
+def admin_dashboard():
+    """Exibe o painel de gestão lendo os Produtos e Pedidos diretamente do Google Sheets."""
+    produtos = load_catalog()
+    
+    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
+    pedidos_raw = get_orders(sheet_name) or []
+    
+    pedidos = []
+    total_vendas = 0.0
+    pendentes_count = 0
+
+    for p in pedidos_raw:
+        st = str(p.get("status", "Pendente")).strip().title()
+        if not st or st.lower() in ["pendente", "novo"]:
+            st = "Pendente"
+            pendentes_count += 1
+            
+        total_val = 0.0
+        total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
+        try:
+            total_val = float(total_str)
+            if st != "Cancelado":
+                total_vendas += total_val
+        except ValueError:
+            pass
+
+        # Garante a estrutura completa do pedido para leitura no template HTML/Kanban
+        pedidos.append({
+            "id": p.get("id") or p.get("pedido_id", ""),
+            "cliente": p.get("nome") or p.get("cliente", "Cliente"),
+            "telefone": p.get("telefone") or p.get("contacto", ""),
+            "endereco": p.get("endereco", "N/A"),
+            "pagamento": p.get("pagamento", "N/A"),
+            "data": p.get("data") or p.get("data_hora", ""),
+            "status": st,
+            "total": total_val,
+            "itens": p.get("itens", [])
+        })
+
+    return render_template(
+        "admin.html", 
+        produtos=produtos, 
+        pedidos=pedidos,
+        total_vendas=f"{total_vendas:.2f}",
+        pendentes_count=pendentes_count,
+        config=Config
+    )
 
 # ======================================================
 # ROTAS DE ADMINISTRAÇÃO (GESTÃO DA BOUTIQUE)
