@@ -88,7 +88,6 @@ def invalidate_catalog_cache():
 
 # ======================================================
 # ROTAS PWA (SERVICE WORKER, MANIFEST E ÍCONES)
-# Ajustadas para a tua pasta static/
 # ======================================================
 @app.route("/sw.js")
 def service_worker():
@@ -144,25 +143,20 @@ def checkout():
 
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
     contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
-    endereco = data.get("endereco") or data.get("cliente_endereco", "N/A")
-    pagamento = data.get("pagamento", "Não especificado")
     
-    # Prepara os dados formatados para gravação na folha de pedidos
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
     
+    # Chamada corrigida alinhada com os argumentos do catalog_service.py
     sucesso = add_order(
         sheet_name=sheet_name,
-        nome=nome_cliente,
-        telefone=contacto_tel,
-        endereco=endereco,
-        pagamento=pagamento,
-        itens=cart,
+        cliente=nome_cliente,
+        contacto=contacto_tel,
+        cart_itens=cart,
         data_hora=hora_mocambique(),
         status="Pendente"
     )
 
     return jsonify({"success": sucesso})
-
 
 # ======================================================
 # ROTAS DE ADMINISTRAÇÃO (PAINEL ADMIN COM KANBAN DE PEDIDOS)
@@ -195,17 +189,16 @@ def admin_dashboard():
         except ValueError:
             pass
 
-        # Garante a estrutura completa do pedido para leitura no template HTML/Kanban
         pedidos.append({
             "id": p.get("id") or p.get("pedido_id", ""),
             "cliente": p.get("nome") or p.get("cliente", "Cliente"),
-            "telefone": p.get("telefone") or p.get("contacto", ""),
+            "telefone": p.get("contacto") or p.get("telefone", ""),
             "endereco": p.get("endereco", "N/A"),
             "pagamento": p.get("pagamento", "N/A"),
-            "data": p.get("data") or p.get("data_hora", ""),
+            "data": p.get("data") or p.get("hora", ""),
             "status": st,
             "total": total_val,
-            "itens": p.get("itens", [])
+            "itens": p.get("itens_parsed", p.get("itens", []))
         })
 
     return render_template(
@@ -220,7 +213,6 @@ def admin_dashboard():
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "GET":
-        # Aponta para templates/admin/login.html
         return render_template("admin/login.html")
 
     username = request.form.get("username")
@@ -233,7 +225,6 @@ def admin_login():
     flash("Credenciais inválidas!", "danger")
     return redirect(url_for("admin_login"))
 
-# ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
 @app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
 @admin_required
 def api_atualizar_status_pedido(pedido_id):
@@ -252,7 +243,6 @@ def api_atualizar_status_pedido(pedido_id):
     else:
         return jsonify({"success": False, "message": "Erro ao atualizar na base de dados/planilha."}), 500
 
-# ROTA COMPATÍVEL COM FORMULÁRIOS TRADICIONAIS (POST FORM-DATA)
 @app.route("/admin/pedidos/status", methods=["POST"])
 @admin_required
 def admin_update_order_status():
@@ -299,6 +289,7 @@ def admin_add_product():
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
+        "disponivel": request.form.get("disponivel", "SIM"),
         "stock": stock_val,
         "fotos": foto_url or "",
         "descricao": request.form.get("descricao")
@@ -333,6 +324,7 @@ def admin_edit_product(produto_id):
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
+        "disponivel": request.form.get("disponivel", "SIM"),
         "stock": stock_val,
         "fotos": foto_url,
         "descricao": request.form.get("descricao")
@@ -364,7 +356,6 @@ def admin_pedidos():
     """Exibe a lista e o estado dos pedidos efetuados."""
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
     pedidos = get_orders(sheet_name)
-    # Aponta diretamente para templates/pedidos.html
     return render_template("pedidos.html", pedidos=pedidos, config=Config)
 
 @app.route("/admin/logout")
