@@ -16,27 +16,60 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
+# Cache da conexão para evitar reautenticação em cada requisição
+_gsheet_client = None
+
+# ======================================================
+# FUNÇÕES AUXILIARES DE SUPORTE
+# ======================================================
+def parse_int(val, default=0):
+    """Converte valores com segurança, preservando o valor 0."""
+    if val is None or val == "":
+        return default
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+def get_next_id(records):
+    """Gera o próximo ID numérico garantindo a ausência de duplicados."""
+    max_id = 0
+    for r in records:
+        raw_id = r.get("ID") or r.get("id") or 0
+        try:
+            val = int(raw_id)
+            if val > max_id:
+                max_id = val
+        except (ValueError, TypeError):
+            continue
+    return max_id + 1
+
 # ======================================================
 # CONEXÃO GOOGLE SHEETS
 # ======================================================
 def get_gsheet_client():
-    """Inicializa e retorna a conexão com o Google Sheets usando google-auth."""
+    """Inicializa e reutiliza a conexão com o Google Sheets."""
+    global _gsheet_client
+    if _gsheet_client is not None:
+        return _gsheet_client
+
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON") or getattr(Config, 'GOOGLE_CREDENTIALS_JSON', None)
     
     if creds_json:
         try:
             creds_dict = json.loads(creds_json) if isinstance(creds_json, str) else creds_json
             creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-            return gspread.authorize(creds)
+            _gsheet_client = gspread.authorize(creds)
+            return _gsheet_client
         except Exception as e:
             logger.error(f"Erro ao autenticar com GOOGLE_CREDENTIALS_JSON: {e}")
 
-    # Tenta carregar do arquivo local se existir
     creds_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'credentials.json')
     if os.path.exists(creds_file):
         try:
             creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
-            return gspread.authorize(creds)
+            _gsheet_client = gspread.authorize(creds)
+            return _gsheet_client
         except Exception as e:
             logger.error(f"Erro ao carregar credentials.json: {e}")
 
@@ -53,6 +86,9 @@ def get_worksheet(sheet_name):
             return client.open_by_key(spreadsheet_id).worksheet(sheet_name)
         except Exception as e:
             logger.error(f"Erro ao abrir a aba {sheet_name}: {e}")
+            # Reset client se houver falha de conexão/token expirado
+            global _gsheet_client
+            _gsheet_client = None
             return None
     return None
 
@@ -69,6 +105,7 @@ def load_catalog():
             records = ws.get_all_records()
             produtos = []
             for idx, r in enumerate(records, start=1):
+                raw_stock = r.get("Stock") if r.get("Stock") is not None else r.get("stock")
                 p = {
                     "id": str(r.get("ID") or r.get("id") or idx),
                     "nome": str(r.get("Nome") or r.get("nome") or ""),
@@ -76,7 +113,7 @@ def load_catalog():
                     "preco": str(r.get("Preco") or r.get("preco") or "0"),
                     "tamanhos": str(r.get("Tamanhos") or r.get("tamanhos") or ""),
                     "cores": str(r.get("Cores") or r.get("cores") or ""),
-                    "stock": int(r.get("Stock") or r.get("stock") or 1),
+                    "stock": parse_int(raw_stock, default=1),
                     "fotos": str(r.get("Fotos") or r.get("fotos") or ""),
                     "descricao": str(r.get("Descricao") or r.get("descricao") or "")
                 }
@@ -97,7 +134,7 @@ def load_catalog():
 
 
 def save_local_catalog(produtos):
-    """Auxiliar: Salva a lista de produtos no arquivo local JSON."""
+    """Salva a lista de produtos no arquivo local JSON."""
     try:
         with open(LOCAL_CATALOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(produtos, f, ensure_ascii=False, indent=2)
@@ -114,7 +151,7 @@ def add_product(novo_produto):
     if ws:
         try:
             records = ws.get_all_records()
-            next_id = len(records) + 1
+            next_id = get_next_id(records)
             
             linha = [
                 next_id,
@@ -134,7 +171,7 @@ def add_product(novo_produto):
 
     # Fallback JSON
     produtos = load_catalog()
-    novo_produto["id"] = str(len(produtos) + 1)
+    novo_produto["id"] = str(get_next_id(produtos))
     produtos.append(novo_produto)
     return save_local_catalog(produtos)
 
@@ -145,7 +182,8 @@ def update_product(produto_id, produto_atualizado):
     
     if ws:
         try:
-            cell = ws.find(str(produto_id))
+            # Restringe a busca estritamente à Coluna 1 (ID)
+            cell = ws.find(str(produto_id), in_column=1)
             if cell:
                 row = cell.row
                 ws.update(f"A{row}:I{row}", [[
@@ -183,7 +221,8 @@ def delete_product(produto_id):
     
     if ws:
         try:
-            cell = ws.find(str(produto_id))
+            # Restringe a busca estritamente à Coluna 1 (ID)
+            cell = ws.find(str(produto_id), in_column=1)
             if cell:
                 ws.delete_rows(cell.row)
                 return True
@@ -216,7 +255,6 @@ def get_orders(sheet_name="Pedidos"):
                 
                 raw_itens = r.get("Itens") or r.get("itens") or r.get("pedido") or "[]"
                 
-                # Parsing dos itens JSON
                 itens_parsed = []
                 if isinstance(raw_itens, list):
                     itens_parsed = raw_itens
@@ -226,13 +264,12 @@ def get_orders(sheet_name="Pedidos"):
                     except Exception:
                         itens_parsed = []
 
-                # Cálculo ou obtenção do total
                 total = str(r.get("Total") or r.get("total") or "0")
                 if total == "0" and itens_parsed:
                     t_val = 0.0
                     for item in itens_parsed:
                         preco_num = float(str(item.get("preco", 0)).replace("MT", "").replace(",", ".").strip() or 0)
-                        qtd = int(item.get("quantidade", 1))
+                        qtd = int(item.get("quantidade", item.get("qtd", 1)))
                         t_val += preco_num * qtd
                     total = f"{t_val:.2f}"
 
@@ -268,7 +305,6 @@ def add_order(sheet_name, cliente, contacto, cart_itens, data_hora, status="Pend
     """Regista um novo pedido no Google Sheets ou no JSON local."""
     ws = get_worksheet(sheet_name)
     
-    # Calcular total
     total_val = 0.0
     for item in cart_itens:
         preco_num = float(str(item.get("preco", 0)).replace("MT", "").replace(",", ".").strip() or 0)
@@ -281,7 +317,7 @@ def add_order(sheet_name, cliente, contacto, cart_itens, data_hora, status="Pend
     if ws:
         try:
             records = ws.get_all_records()
-            next_id = len(records) + 1
+            next_id = get_next_id(records)
             linha = [
                 next_id,
                 cliente,
@@ -299,7 +335,7 @@ def add_order(sheet_name, cliente, contacto, cart_itens, data_hora, status="Pend
     # Fallback JSON local
     pedidos = get_orders(sheet_name)
     novo_pedido = {
-        "id": str(len(pedidos) + 1),
+        "id": str(get_next_id(pedidos)),
         "nome": cliente,
         "cliente": cliente,
         "contacto": contacto,
@@ -322,14 +358,13 @@ def add_order(sheet_name, cliente, contacto, cart_itens, data_hora, status="Pend
 
 
 def update_order_status(sheet_name, order_id, new_status):
-    """
-    Atualiza o estado (Pendente, A Caminho, Entregue, Cancelado) de um pedido específico.
-    """
+    """Atualiza o estado de um pedido específico no Google Sheets ou no JSON local."""
     ws = get_worksheet(sheet_name)
     
     if ws:
         try:
-            cell = ws.find(str(order_id))
+            # Restringe a busca estritamente à Coluna 1 (ID)
+            cell = ws.find(str(order_id), in_column=1)
             if cell:
                 headers = ws.row_values(1)
                 col_status = 6  # Padrão: Coluna F
