@@ -4,7 +4,6 @@ import os
 import time
 import json
 import logging
-import hmac
 import cloudinary
 import cloudinary.uploader
 
@@ -88,44 +87,8 @@ def invalidate_catalog_cache():
     CACHE_PRODUTOS = None
 
 # ======================================================
-# HELPER DE NORMALIZAÇÃO DE PEDIDOS
-# ======================================================
-def processar_pedidos_raw(pedidos_raw):
-    """Normaliza o formato dos pedidos vindos do Google Sheets."""
-    pedidos = []
-    total_vendas = 0.0
-    pendentes_count = 0
-
-    for p in pedidos_raw:
-        st = str(p.get("status", "Pendente")).strip().title()
-        if not st or st.lower() in ["pendente", "novo"]:
-            st = "Pendente"
-            pendentes_count += 1
-            
-        total_val = 0.0
-        total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
-        try:
-            total_val = float(total_str)
-            if st != "Cancelado":
-                total_vendas += total_val
-        except ValueError:
-            pass
-
-        pedidos.append({
-            "id": p.get("id") or p.get("pedido_id", ""),
-            "cliente": p.get("nome") or p.get("cliente", "Cliente"),
-            "telefone": p.get("contacto") or p.get("telefone", ""),
-            "endereco": p.get("endereco", "N/A"),
-            "pagamento": p.get("pagamento", "N/A"),
-            "data": p.get("data") or p.get("hora", ""),
-            "status": st,
-            "total": total_val,
-            "itens": p.get("itens_parsed", p.get("itens", []))
-        })
-    return pedidos, total_vendas, pendentes_count
-
-# ======================================================
 # ROTAS PWA (SERVICE WORKER, MANIFEST E ÍCONES)
+# Ajustadas para a tua pasta static/
 # ======================================================
 @app.route("/sw.js")
 def service_worker():
@@ -167,53 +130,82 @@ def api_produtos():
     return jsonify({"produtos": get_cached_catalog()})
 
 # ======================================================
-# CHECKOUT / REGISTAR PEDIDO NO GOOGLE SHEETS
+# CHECKOUT / REGISTAR PEDIDO
 # ======================================================
 @app.route("/checkout", methods=["POST"])
 @app.route("/api/pedidos/novo", methods=["POST"])
 def checkout():
-    """Regista um novo pedido vindo da Sacola de Compras para o Google Sheets."""
-    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    """Regista um novo pedido vindo da Sacola de Compras antes de ir para o WhatsApp."""
+    data = request.get_json(silent=True) or {}
 
-    cart_itens = data.get("cart") or data.get("itens", [])
-    if not cart_itens:
+    cart = data.get("cart") or data.get("itens", [])
+    if not cart:
         return jsonify({"success": False, "error": "Carrinho vazio"}), 400
 
     nome_cliente = data.get("nome") or data.get("cliente_nome", "Cliente")
+    
     contacto_tel = data.get("contacto") or data.get("telefone", "N/A")
-    endereco = data.get("endereco", "N/A")
-    pagamento = data.get("pagamento", "N/A")
-    total = data.get("total", "0")
+    endereco = data.get("endereco") or data.get("cliente_endereco", "N/A")
+    pagamento = data.get("pagamento", "Não especificado")
     
-    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
-    
+    contacto_completo = f"{contacto_tel} | End: {endereco} | Pag: {pagamento}"
+
     sucesso = add_order(
-        sheet_name=sheet_name,
-        cliente=nome_cliente,
-        contacto=contacto_tel,
-        endereco=endereco,
-        pagamento=pagamento,
-        total=total,
-        cart_itens=cart_itens,
-        data_hora=hora_mocambique(),
+        getattr(Config, 'SHEET_ORDERS', 'Pedidos'),
+        nome_cliente,
+        contacto_completo,
+        cart,
+        hora_mocambique(),
         status="Pendente"
     )
 
     return jsonify({"success": sucesso})
 
 # ======================================================
-# ROTAS DE ADMINISTRAÇÃO (PAINEL ADMIN COM KANBAN DE PEDIDOS)
+# ROTAS DE ADMINISTRAÇÃO (GESTÃO DA BOUTIQUE)
 # ======================================================
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "GET":
+        # Aponta para templates/admin/login.html
+        return render_template("admin/login.html")
+
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    if username == Config.ADMIN_USERNAME and password == Config.ADMIN_PASSWORD:
+        session["admin_logged_in"] = True
+        return redirect(url_for("admin_dashboard"))
+
+    flash("Credenciais inválidas!", "danger")
+    return redirect(url_for("admin_login"))
+
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    """Exibe o painel de gestão lendo os Produtos e Pedidos diretamente do Google Sheets."""
+    """Exibe o painel de gestão com a lista de produtos, pedidos e métricas."""
     produtos = load_catalog()
     
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
-    pedidos_raw = get_orders(sheet_name) or []
-    pedidos, total_vendas, pendentes_count = processar_pedidos_raw(pedidos_raw)
+    pedidos = get_orders(sheet_name)
+    
+    # Cálculo das métricas do painel
+    total_vendas = 0.0
+    pendentes_count = 0
+    
+    for p in pedidos:
+        st = str(p.get("status", "")).lower()
+        if st in ["pendente", "novo", ""]:
+            pendentes_count += 1
+            
+        if st != "cancelado":
+            total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
+            try:
+                total_vendas += float(total_str)
+            except ValueError:
+                pass
 
+    # Aponta para templates/admin.html
     return render_template(
         "admin.html", 
         produtos=produtos, 
@@ -223,24 +215,7 @@ def admin_dashboard():
         config=Config
     )
 
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    if request.method == "GET":
-        return render_template("admin/login.html")
-
-    username = request.form.get("username", "")
-    password = request.form.get("password", "")
-
-    user_ok = hmac.compare_digest(username, getattr(Config, "ADMIN_USERNAME", ""))
-    pass_ok = hmac.compare_digest(password, getattr(Config, "ADMIN_PASSWORD", ""))
-
-    if user_ok and pass_ok:
-        session["admin_logged_in"] = True
-        return redirect(url_for("admin_dashboard"))
-
-    flash("Credenciais inválidas!", "danger")
-    return redirect(url_for("admin_login"))
-
+# ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
 @app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
 @admin_required
 def api_atualizar_status_pedido(pedido_id):
@@ -259,6 +234,7 @@ def api_atualizar_status_pedido(pedido_id):
     else:
         return jsonify({"success": False, "message": "Erro ao atualizar na base de dados/planilha."}), 500
 
+# ROTA COMPATÍVEL COM FORMULÁRIOS TRADICIONAIS (POST FORM-DATA)
 @app.route("/admin/pedidos/status", methods=["POST"])
 @admin_required
 def admin_update_order_status():
@@ -284,7 +260,6 @@ def processar_imagem_produto(request_obj):
             return resultado.get("secure_url")
         except Exception as e:
             logging.error(f"Erro no upload do Cloudinary: {e}")
-            flash("Aviso: Falha ao fazer upload da foto no Cloudinary.", "warning")
             return None
     
     return request_obj.form.get("fotos", "")
@@ -306,7 +281,6 @@ def admin_add_product():
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
-        "disponivel": request.form.get("disponivel", "SIM"),
         "stock": stock_val,
         "fotos": foto_url or "",
         "descricao": request.form.get("descricao")
@@ -341,7 +315,6 @@ def admin_edit_product(produto_id):
         "preco": request.form.get("preco"),
         "tamanhos": request.form.get("tamanhos"),
         "cores": request.form.get("cores"),
-        "disponivel": request.form.get("disponivel", "SIM"),
         "stock": stock_val,
         "fotos": foto_url,
         "descricao": request.form.get("descricao")
@@ -372,8 +345,8 @@ def admin_delete_product(produto_id):
 def admin_pedidos():
     """Exibe a lista e o estado dos pedidos efetuados."""
     sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
-    pedidos_raw = get_orders(sheet_name) or []
-    pedidos, _, _ = processar_pedidos_raw(pedidos_raw)
+    pedidos = get_orders(sheet_name)
+    # Aponta diretamente para templates/pedidos.html
     return render_template("pedidos.html", pedidos=pedidos, config=Config)
 
 @app.route("/admin/logout")
