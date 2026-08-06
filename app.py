@@ -217,9 +217,6 @@ def admin_dashboard():
         config=Config
     )
 
-# ======================================================
-# ROTAS DE ADMINISTRAÇÃO (GESTÃO DA BOUTIQUE)
-# ======================================================
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "GET":
@@ -235,41 +232,6 @@ def admin_login():
 
     flash("Credenciais inválidas!", "danger")
     return redirect(url_for("admin_login"))
-
-@app.route("/admin")
-@admin_required
-def admin_dashboard():
-    """Exibe o painel de gestão com a lista de produtos, pedidos e métricas."""
-    produtos = load_catalog()
-    
-    sheet_name = getattr(Config, 'SHEET_ORDERS', 'Pedidos')
-    pedidos = get_orders(sheet_name)
-    
-    # Cálculo das métricas do painel
-    total_vendas = 0.0
-    pendentes_count = 0
-    
-    for p in pedidos:
-        st = str(p.get("status", "")).lower()
-        if st in ["pendente", "novo", ""]:
-            pendentes_count += 1
-            
-        if st != "cancelado":
-            total_str = str(p.get("total", "0")).replace("MT", "").replace(",", ".").strip()
-            try:
-                total_vendas += float(total_str)
-            except ValueError:
-                pass
-
-    # Aponta para templates/admin.html
-    return render_template(
-        "admin.html", 
-        produtos=produtos, 
-        pedidos=pedidos,
-        total_vendas=f"{total_vendas:.2f}",
-        pendentes_count=pendentes_count,
-        config=Config
-    )
 
 # ROTA ASSÍNCRONA PARA O FETCH JAVASCRIPT (SEM RECARREGAR PÁGINA)
 @app.route("/admin/pedido/status/<pedido_id>", methods=["POST"])
