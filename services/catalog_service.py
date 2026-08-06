@@ -44,6 +44,24 @@ def get_next_id(records):
             continue
     return max_id + 1
 
+def parse_row(row, idx):
+    """Normaliza as chaves do dicionário do Google Sheets para minúsculas."""
+    r = {str(k).strip().lower(): v for k, v in row.items()}
+    raw_stock = r.get("stock")
+    
+    return {
+        "id": str(r.get("id") or idx),
+        "categoria": str(r.get("categoria") or "Geral"),
+        "nome": str(r.get("nome") or ""),
+        "descricao": str(r.get("descricao") or ""),
+        "preco": str(r.get("preco") or "0"),
+        "fotos": str(r.get("fotos") or ""),
+        "tamanhos": str(r.get("tamanhos") or ""),
+        "cores": str(r.get("cores") or ""),
+        "disponivel": str(r.get("disponivel") or "SIM"),
+        "stock": parse_int(raw_stock, default=1)
+    }
+
 # ======================================================
 # CONEXÃO GOOGLE SHEETS
 # ======================================================
@@ -86,7 +104,6 @@ def get_worksheet(sheet_name):
             return client.open_by_key(spreadsheet_id).worksheet(sheet_name)
         except Exception as e:
             logger.error(f"Erro ao abrir a aba {sheet_name}: {e}")
-            # Reset client se houver falha de conexão/token expirado
             global _gsheet_client
             _gsheet_client = None
             return None
@@ -105,18 +122,7 @@ def load_catalog():
             records = ws.get_all_records()
             produtos = []
             for idx, r in enumerate(records, start=1):
-                raw_stock = r.get("Stock") if r.get("Stock") is not None else r.get("stock")
-                p = {
-                    "id": str(r.get("ID") or r.get("id") or idx),
-                    "nome": str(r.get("Nome") or r.get("nome") or ""),
-                    "categoria": str(r.get("Categoria") or r.get("categoria") or "Geral"),
-                    "preco": str(r.get("Preco") or r.get("preco") or "0"),
-                    "tamanhos": str(r.get("Tamanhos") or r.get("tamanhos") or ""),
-                    "cores": str(r.get("Cores") or r.get("cores") or ""),
-                    "stock": parse_int(raw_stock, default=1),
-                    "fotos": str(r.get("Fotos") or r.get("fotos") or ""),
-                    "descricao": str(r.get("Descricao") or r.get("descricao") or "")
-                }
+                p = parse_row(r, idx)
                 produtos.append(p)
             return produtos
         except Exception as e:
@@ -151,18 +157,19 @@ def add_product(novo_produto):
     if ws:
         try:
             records = ws.get_all_records()
-            next_id = get_next_id(records)
+            next_id = novo_produto.get("id") or f"prod-{get_next_id(records):03d}"
             
             linha = [
                 next_id,
-                novo_produto.get("nome", ""),
                 novo_produto.get("categoria", ""),
+                novo_produto.get("nome", ""),
+                novo_produto.get("descricao", ""),
                 novo_produto.get("preco", ""),
+                novo_produto.get("fotos", ""),
                 novo_produto.get("tamanhos", ""),
                 novo_produto.get("cores", ""),
-                novo_produto.get("stock", 1),
-                novo_produto.get("fotos", ""),
-                novo_produto.get("descricao", "")
+                novo_produto.get("disponivel", "SIM"),
+                novo_produto.get("stock", 1)
             ]
             ws.append_row(linha)
             return True
@@ -171,7 +178,7 @@ def add_product(novo_produto):
 
     # Fallback JSON
     produtos = load_catalog()
-    novo_produto["id"] = str(get_next_id(produtos))
+    novo_produto["id"] = str(novo_produto.get("id") or f"prod-{get_next_id(produtos):03d}")
     produtos.append(novo_produto)
     return save_local_catalog(produtos)
 
@@ -182,20 +189,20 @@ def update_product(produto_id, produto_atualizado):
     
     if ws:
         try:
-            # Restringe a busca estritamente à Coluna 1 (ID)
             cell = ws.find(str(produto_id), in_column=1)
             if cell:
                 row = cell.row
-                ws.update(f"A{row}:I{row}", [[
+                ws.update(f"A{row}:J{row}", [[
                     produto_id,
-                    produto_atualizado.get("nome", ""),
                     produto_atualizado.get("categoria", ""),
+                    produto_atualizado.get("nome", ""),
+                    produto_atualizado.get("descricao", ""),
                     produto_atualizado.get("preco", ""),
+                    produto_atualizado.get("fotos", ""),
                     produto_atualizado.get("tamanhos", ""),
                     produto_atualizado.get("cores", ""),
-                    produto_atualizado.get("stock", 1),
-                    produto_atualizado.get("fotos", ""),
-                    produto_atualizado.get("descricao", "")
+                    produto_atualizado.get("disponivel", "SIM"),
+                    produto_atualizado.get("stock", 1)
                 ]])
                 return True
         except Exception as e:
@@ -221,7 +228,6 @@ def delete_product(produto_id):
     
     if ws:
         try:
-            # Restringe a busca estritamente à Coluna 1 (ID)
             cell = ws.find(str(produto_id), in_column=1)
             if cell:
                 ws.delete_rows(cell.row)
@@ -363,7 +369,6 @@ def update_order_status(sheet_name, order_id, new_status):
     
     if ws:
         try:
-            # Restringe a busca estritamente à Coluna 1 (ID)
             cell = ws.find(str(order_id), in_column=1)
             if cell:
                 headers = ws.row_values(1)
